@@ -1,0 +1,390 @@
+---
+title: "Langasek_cs559_hw2"
+author: "Patty Langasek"
+date: "May 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+# Class instructions are to not use packages, as such, this will only be for necessities
+library(skimr) # I like this for EDAs.
+```
+
+harmoney@epona:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing.txt 
+506 housing.txt
+
+```{r data}
+header <- c('CRIM','ZN','INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS',
+            'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT', 'MEDV')
+housing <- read.delim('housing.txt', sep ="", header = FALSE)
+names(housing) <- header
+```
+
+# Problem 1.1 Exploratory Data Analysis
+
+Reading through housing_desc.txt helps answer:
+
+## a. How many binary attributes are in the data set? List the attributes.
+
+There is 1 binary attribute; it is CHAS - Charles River dummy variable to indicate if the tract bounds the river (1) or not (0).
+
+```{r}
+#housing$CHAS <- as.factor(housing$CHAS)
+skim(housing)
+skim(as.factor(housing$RAD))
+summary(housing)
+```
+
+As expected by the description text, there are 506 observations, 14 variables, one of which is a binary factor. One of the variables is not specified as a class, though RAD should likely be with only 9 unique values. I'll leave it as a continuous variable for now (since the description text doesn't indicate it should be treated differently), but may revisit this later.
+
+## b. Calculate and report correlations in between the first 13 attributes (columns) and the target attribute (column 14). What are the attribute names with the highest positive and negative correlations to the target attribute?
+
+```{r}
+pairs(housing)
+cor(housing)
+```
+
+The highest positive correlation with MEDV is RM, the highest negative correlation with MEDV is LSTAT.
+
+## Note that the correlation is a linear measure of similarity. Examine scatter plots for attributes and the target attribute by writing your own function. Which scatter plot looks the most linear, and which looks the most nonlinear? Plot these scatter plots and briefly (in 1-2 sentences) explain your choice.
+
+```{r}
+
+loop.vector <- 1:13
+
+for (i in loop.vector) {
+  x <- housing[,i]
+  plot(x = x, y = housing$MEDV, xlab = colnames(housing[i]), ylab = "MEDV")
+}
+
+```
+
+At a glance, RM and LSTAT relationships look most linear (positive and negative, respectively) with MEDV, with LSTAT looking like it could *almost* be exponential towards the lowest values, but overall, looks fairly linear. RM looks a little scattered on the lowest values, but at the center and highest values of RM do seem to appreciate a linear relationship with MEDV.
+
+Setting aside CHAS (which is a binary factor) and RAD (which appears to be a classification of 9 values ranging from 1 to 24), B and CRIM appear to have the most non-linear relationship (postive and negative, respectively) to MEDV, and both appear to be exponential.
+
+## (d) Calculate all correlations between the 14 columns (using the corrcoef function or similar). Which two attributes have the largest mutual correlation in the dataset?
+
+```{r}
+cor(housing)
+```
+
+TAX and RAD appear to have the largest mutual correlation coefficient of 0.91022819. (MEDV and LSTAT have the second highest with a negative correlation coefficient 0.7376627.)
+
+# Problem 1.2 Linear Regression
+
+Loading the training and test datasets.
+
+harmoney@epona:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing_train.txt 
+441 housing_train.txt
+harmoney@epona:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing_test.txt 
+76 housing_test.txt
+
+
+```{r}
+housing_train <- read.table('housing_train.txt', sep ="", header = FALSE, quote = "", comment.char = "")
+names(housing_train) <- header
+housing_test <- read.table('housing_test.txt', sep ="", header = FALSE)
+names(housing_test) <- header
+```
+
+There are missing lines in both file imports: 8 missing from the training file and 2 from the test. And after a very embarrassing amount of troubleshooting time, it was discovered that there are 8 blank lines at the end of the training file and 2 blank lines at the end of the test file. All data accounted for.
+
+```{r}
+skim(housing_train)
+skim(housing_test)
+```
+
+It looks as if the distributions of the training and testing datasets are roughly representative, though there may be some representation issues in NOX and PTRatio in the testing set (or maybe poorly represented in the training set).
+
+## a. Write a function LR_solve that takes X and y components of the data (X is a matrix of inputs where rows correspond to examples) and returns a vector of coefficients w with the minimal mean square fit. (Hint: If you are using Matlab, you can use backslash operator ’/’ to do the least squares regression directly; check Matlab’s help).
+
+```{r}
+
+# LR_solve, X must be a matrix of inputs with the dependent variable as the last column, and all other columns are predictors.
+# In ideal world, I would count the columns of the matrix (or data frame), and math out the dependent variable instead of
+# hard coding it in. I live in this world, however, which means I'm answering this question for now. If time remains, I may
+# go back and generalizablize it.
+
+LR_solve <- function(X) {
+  mod_fit <- lm(X$MEDV ~ ., data = X)
+  w <- mod_fit$coefficients
+  return(w)
+}
+```
+
+
+
+## b. Write a function LR_predict that takes input components of the test data (X) and a fixed set of weights (w), and computes vector of linear predictions y.
+
+```{r}
+# Going by definition of the problem, it would seem w would need to be pre-calculated for the test data before 
+# running this function as it's a required paramter by question definition.
+# If I were doing this myself, I would calculate w as part of the predict function by calling the LR_solve function
+# so that the weights are always calculated with the data passed in and no mistakes of sleep deprived data
+# scientists can foil my plans.
+
+LR_predict <- function(X, w) { 
+  predictions <- NULL  # initialize a vector for the predicted values
+    for (row in 1:nrow(X)){ # cycle through each row
+      sum_pred = 0 # initialize the holder for the predictor sum
+      for (i in 1:13) { # cycle through each independent variable in the row
+        sum_pred <- sum_pred + w[i + 1] * X[row,i] # calculate each variable with the weight and sum as we go
+      }
+    predictions <- c(unlist(predictions), sum_pred + w[1]) # add the intercept (w0) to the completed summed prediction for that row.
+    }
+#  predictions <- as.vector(predictions)
+return(predictions) # gimme dose preds
+}
+```
+
+## c. Write and submit the program main1_2 that loads the train and test set, learns the weights for the training set, and computes the mean squared error of your predictor on both the training and testing data set.
+
+$J_{n}$ = $\frac{1}{n}$ $$\sum_{i=1,...n}(y_i - f(x_i))^2$$
+
+
+```{r main1_2}
+# Oh, I get it now.
+
+housing_train <- read.table('housing_train.txt', sep ="", header = FALSE, quote = "", comment.char = "")
+names(housing_train) <- header # probably not necessary, but helps my sanity as I'm looking over the data
+housing_test <- read.table('housing_test.txt', sep ="", header = FALSE)
+names(housing_test) <- header # as above
+
+w <- LR_solve(housing_train) # train the model and extract the predictor weights.
+
+predictions <- unname(LR_predict(housing_test, w)) # drink
+
+# TUNE IN TOMORROW FOR OUR EXCITING CONCLUSION OF main1_2 and DAY DRINKING
+
+housing_MSE <- function(X) {
+  w <- LR_solve(X) # get the w values
+  predictions <- unname(LR_predict(X, w)) # get the predicted values
+  pred_quant <- dim(X)[1] # how many predictions are there for this one?
+  mse = 0 # initialize our variable
+  
+  # calculate the error
+  for (i in 1:pred_quant) { 
+    mse <- mse + (X[i, 14] - predictions[i])^2
+  }
+  mse <- mse / pred_quant
+  return(mse)
+}
+
+test_MSE <- housing_MSE(housing_test)
+train_MSE <- housing_MSE(housing_train)
+
+```
+
+
+## d. In your report please list the resulting weights, and both mean square errors. Compare the errors for the training and testing set. Which one is better?
+
+```{r}
+w
+test_MSE
+train_MSE
+```
+
+The error rate for the testing data set appears lower (and thus, better) than the one for the training set.
+
+# Problem 1.3 Online gradient descent
+
+## a. Implement an online gradient descent procedure for finding the regression coefficients w. 
+Your program should:
+* start with zero weights (all weights set to 0 at the beginning);
+
+* update weights using the annealed learning rate 2/t, where t denotes the t -th update
+step. Thus, for the first data point the learning rate is 2, for the second it is 2/2 = 1,
+for the 3-rd is 2/3 and so on;
+
+* repeat the update procedure for 1000 steps reusing the examples in the training data
+if neccessary (hint: the index of the i-th example in the training set can be obtained
+by (i mod n) operation);
+
+* return the final set of weights.
+
+```{r}
+# Data for this problem.
+
+train_1.3a <- as.matrix(housing_train)
+test_1.3a <- as.matrix(housing_test)
+
+
+train_ogd <- cbind(1, train_1.3a) # add intercept integer.
+test_ogd <- cbind(1, test_1.3a) # probably helpful to do for testing set as well.
+
+grad_rec <- function(X, iterations) {
+  set.seed(1235)
+  X <- cbind(1, X)
+  w = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
+  current_iter <- 1 # Where we at, dawg
+  alpha <- 2  
+  N <- ncol(housing_train)
+
+  for (i in 1:iterations) {
+    current_row <- X[sample(nrow(X), 1),]
+    gradient_vals <- (1 / N) * (current_row[15] - t(w) * current_row[1:14]) * current_row[1:14]
+    w <- w + alpha * t(gradient_vals) # update weights from this sample.
+    current_iter <- current_iter + 1
+    alpha <- 2 / current_iter # anneal learning rate per problem
+     } 
+  
+  return(w)
+}
+```
+
+When running this, I get 2 values that are far too large to begin with in several samples of the data, making the calculation unwieldly as it goes towards the 1000 iteration. I am assuming this is a normalization issue and can be addressed in the next part of the assignment.
+
+
+## b. Write a program main1_3 that runs the gradient procedure on the data and at the end prints the mean test and train errors. Your program should normalize the data before running the method. Run it and report the results. Give the mean errors for both the training and test set. Is the result better or worse than the one obtained by solving the regression problem exactly?
+
+```{r main1_3}
+# This will need to be saved as a separate script once completed and handed in separately.
+
+main1_3 <- function(X, iterations) {
+
+# Step 1, normalize data
+   housing_norm <- scale(X)
+# Step 2, online gradient descent procedure implemented above
+    w <- grad_rec(housing_norm, iterations)
+  
+# Step 3, calculate MSE
+    y_hat <- LR_predict(X, w)
+    housing_MSE(X)
+}
+```
+
+
+## c. Run the gradient descent on un-normalized dataset. What happened?
+
+This is what I did before where I could not get weight values for 2 of the parameters because the numbers were out of bounds in calculating before the alpha was small enough to actually affect it. Looking at the full dataset, the values were highly wide-ranging as well, and since I was randomly sampling from the training set, I had a high probability of starting with larger values, which would grow exponentially larger with each iteration. Normalizing helped to curtail this issue.
+
+## d. Modify main1_3 from part b, such that it lets you to progressively observe changes in the mean train and test errors. For Matlab users, use functions init_progress_graph.m and add_to_progress_grap.m provided. The init_progress_graph.m initializes the graph structure and add_to_progress_graph.m lets you add new data entries on-fly to the graph. If you use other languages, write your own init_progress_graph and add_to_progress_graph. Using the two functions plot the mean squared errors for thetraining and test set for every 50 iteration steps. Submit the program and include the graph in the report.
+
+```{r}
+
+```
+
+
+## e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.
+
+# Problem 1.4 Regression with Polynomials
+
+$$f(x,w) = w_0 + \sum_{i=1}^{13}w_ix_i + \sum_{i=1}^{13} \sum_{j=1}^{13}w_{ij}x_{i}x_{j}$$
+
+## a. Write a function extendx that takes an input x and returns an expanded x that includes all linear and degree two polynomials.
+
+```{r extendx}
+
+extendx <- function(x) {
+  
+}
+
+```
+
+
+## b. What happened to the binary attribute after the transformation?
+
+## c. Write and submit a program main1_4 that computes the regression coefficients for the extended input and both train and test errors for the result.
+
+```{r main1_4}
+# This will need to be saved as a separate script once completed and handed in separately.
+
+
+```
+
+
+## d. Report both errors in your report and compare them with the results in part 2. What do you see? Which method would you use for the prediction? Why? Please do not turn in the weights for this part in your report.
+
+# CLASSIFICATION
+
+# Problem 2.1 Data Analysis
+
+harmony@epona:~/Class/OHSU/machinelearning/hw/hw2$ wc -l class*
+  100 classification_test.txt
+  250 classification_train.txt
+  350 total
+  
+```{r}
+class_test <- read.delim('classification_test.txt', sep = '', header = FALSE)
+class_test$V3 <- as.factor(class_test$V3)
+class_train <- read.delim('classification_train.txt', sep= '', header = FALSE)
+class_train$V3 <- as.factor(class_train$V3)
+```
+
+test has 100 observations and 3 variables, train has 250 observations and 3 variables. Raw data accounted for.
+
+```{r}
+skim(class_test)
+skim(class_train)
+```
+
+
+## a. Write a program that plots the input data points in classification_train.txt such that the plot distinguishes between data points with different class labels (use different color and symbol for a point, e.g. ’x’ or ’o’ ).
+
+```{r}
+plot(x = class_train$V1, y = class_train$V2, col = c("red", "blue")[class_train$V3], pch = c(1, 4)[class_train$V3], xlab = "x", ylab = "y", main = "Training Data")
+
+#plot(x = class_test$V1, y = class_test$V2, col = c("red", "blue")[class_test$V3], pch = c(1,4)[class_test$V3], xlab = "x", ylab = "y", main = "Testing Data")
+```
+
+## b. Include the plot in your report. Is it possible to separate the two classes perfectly with a linear decision boundary?
+
+No, there is no linear boundary that could completely separate the two classes without classification errors for both classes. There is too much overlap between red and blue (0 and x) between ~ -1.8 and 0.0 on the x-axis and -1.0 and 1.0 on the y-axis, with the biggest concern between x(-1,-5) and y(0,0.5).
+
+# LATE
+# Problem 2.2 Logistic Regression
+
+## a. During the class you were given the expression for the gradient of the logistic regression model. Use the loglikelihood setup from the lecture to derive the expression. Show clearly the steps of the derivation. Please remember that the ’default’ gradient takes into account all data points in the training set.
+
+$$
+
+$$
+
+$$
+\begin{aligned}
+ \underbrace{p(x|\mu_1,\Sigma_1)} > \underbrace{p(x|\mu_0,\Sigma_0)} \longrightarrow then~y = 1 \\
+ g_1(x) ~~~~~>~~~~~~ g_0(x)~~~~~~~~~~~~~~ else~y = 0
+\end{aligned}
+$$
+
+
+## b. Write and submit a gradient procedure GLR for updating the parameters of the logistic regression model. 
+Your gradient procedure should:
+– start from unit weights (all weights set to 1 at the beginning);
+– use the annealed learning rate 2 / k ;
+– executes for K steps where K is the parameter of the procedures.
+
+## c. Write and submit a program main2_1 that runs the GLR function for 500 steps and after the training computes mean misclassification errors for both the training and test set. In your report include, the resulting weights, and misclassification errors.
+
+## d. Update the main2_1 with plot functions that let you observe the progress of the errors after every 50 update steps. Use functions defined earlier for this purpose. Include the resulting graph in your report.
+
+## e. Experiment with the GLR function by: (I) changing the number of steps K and (II) trying different learning rates. In particular, try some constant learning rates and $$\frac{1}{\sqrt(k)}$$ learning rate schedule. Report the results and graph from your experiments and explanations of behaviors you have observed.
+
+# Problem 2.3 Generative Classification Model
+
+## a. Give the formula for computing ML estimates of means of class conditional densities?
+
+## b. How would you go about computing the estimate of the covariance matrix $\sum$ ? Note that the estimate of $\sum$ must combine both class 0 and class 1 examples.
+
+## c. How would you estimate the prior of class $\theta_{c = 1}$ =1?
+
+## d. Implement function Max_Likelihood that computes the estimates of model parameters using the training set.
+
+## e. Implement the function Predict_class that chooses the class using the discriminant functions based on class posteriors.
+
+## f. Write and submit a program main2_2 that learns the generative model and then uses it to compute the predictions. The program should compute mean misclassification errors for both training and testing datasets.
+
+
+
+
+## g. Report the results (parameters of the generative model), and errors. Compare them to the results obtained in Problem 2.2.
+
+# References
+
+(1.1c) https://bookdown.org/ndphillips/YaRrr/creating-multiple-plots-with-a-loop.html
+(1.3a) https://www.r-bloggers.com/implementing-the-gradient-descent-algorithm-in-r/

@@ -1,0 +1,928 @@
+---
+title: "Langasek_cs559_project"
+author: "Patty Langasek"
+date: "August 6, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r libraries}
+library(skimr)
+library(dplyr) # for proper filtring capabilities
+library(tidyr)
+library(ggplot2) # for proper plotting capabilities
+```
+## Data: Wine Variety Classification
+
+Data was collected from Kaggle at https://www.kaggle.com/brynja/wineuci
+
+
+```{r wine_data}
+wine.header <- c('varietal', 'alcohol', 'mal_acid', 'ash', 'alc_ash', 'Mg', 'tot_phenols', 
+                 'flavanoids', 'nonflav_phenols', 'proanthocyanins', 'color_int', 'hue', 
+                 'od_dil', 'proline')
+
+wine.data <- read.csv('wine.data', header = FALSE, sep = ',')
+
+colnames(wine.data) <- wine.header
+wine.data <- wine.data[c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1)]
+wine.data$varietal <- as.factor(wine.data$varietal)
+
+```
+
+## EDA
+
+```{r}
+skim(wine.data)
+```
+
+```{r}
+barplot(table(wine.data$varietal), main="Varietal Counts", xlab="Varietal Class")
+```
+
+```{r}
+pairs(formula = wine.data$varietal ~ ., data = wine.data)
+cor(wine.data[1:13])
+```
+
+There appears to be correlation between total phenols (tot_phenols) and flavanoids and OD280/OD315 of diluted wines, with the flavanoids and OD_dil having a stronger correlation to each other than to the total phenols. Proanthocyanins also appear to have a slight correlation with total phenols, flavanoids, and od_dil. 
+
+```{r}
+loop.vector <- 1:13
+
+for (i in loop.vector) {
+  x <- wine.data[,i]
+  plot(x = x, y = wine.data$varietal, xlab = colnames(wine.data[i]), ylab = "Varietal")
+}
+```
+
+Flavanoids very clearly splits varietals 1 and 3 from each other, creating 2 sets of binary splits from there. With absolutely no overlap between the two classes and a reasonably large buffer between them, this may be useful going foward as a manual split.
+
+Just as a cursory glance, it'd be nice to see how the variables are shaped based on varietal class. Using filter() from the library, dplyr because it actually handles the dataframe as I expect it to.
+
+```{r}
+wine.1 <- filter(wine.data, wine.data$varietal == '1')
+wine.2 <- filter(wine.data, wine.data$varietal == '2')
+wine.3 <- filter(wine.data, wine.data$varietal == '3')
+```
+
+```{r}
+ggplot(gather(wine.data[1:13]), aes(value), groupName=wine.data[14]) + 
+  geom_histogram(bins = 10) +
+  facet_wrap(~key, scales = 'free_x')
+```
+
+```{r}
+ggplot(gather(wine.1[1:13]), aes(value), groupName=wine.data[14]) + 
+  geom_histogram(bins = 10) +
+  facet_wrap(~key, scales = 'free_x')
+```
+
+```{r}
+skim(wine.1)
+```
+
+
+```{r}
+ggplot(gather(wine.2[1:13]), aes(value), groupName=wine.data[14]) + 
+  geom_histogram(bins = 10) +
+  facet_wrap(~key, scales = 'free_x')
+```
+
+```{r}
+skim(wine.2)
+```
+
+
+```{r}
+ggplot(gather(wine.3[1:13]), aes(value), groupName=wine.data[14]) + 
+  geom_histogram(bins = 10) +
+  facet_wrap(~key, scales = 'free_x')
+```
+ 
+```{r}
+skim(wine.3)
+```
+ 
+ 
+ od_dil and proanthocyanins look like they have the most variation between the varietals, so are likely heavily weighted parameters.
+
+ 
+ ## Plan
+ ### Step 1: Data Split and Algorithm Learning
+ 
+I'm intend to split the data into two datasets: one for training (138) and one for final testing (40). Within the training set, I would like to randomly select 118 with replacement, then test on the remaining 20, and repeat the process at minimum of 5 times (5-fold cv) and see how my classification algorithm performs across the cv holdout tests.
+
+
+ 
+### Step 3: Classification
+
+Looking at the histograms, it would appear that there are definitely some parameters that can easily divide the data, with the best sort between varietals 1 and 3.
+
+ASSUMPTION:
+Yes, I'm assuming a linear relationship between the varietal and the 13 predictor variables, and I'm assuming each predictor variable has its own weight.
+
+### Step 4: Evaluation
+
+A confusion matrix for each of the cv's will be created and averaged to determine the accuracy of the learning algorithm. Should accuracy be concerning, the learning algorithm needs to be revisited, or perhaps a more selective feature selection should be considered.
+
+## Data Split and Algorithm Learning
+### Data Split
+
+The main split, and the final test dataset will not be touched until I'm ready to fully test the classifier. All of my cross validation training will be done with the full.train set.
+
+```{r}
+set.seed(1701)
+
+wine.split.smpl <- sample(seq_len(nrow(wine.data)), size = 138)
+
+wine.full.train <- wine.data[wine.split.smpl, ]
+wine.final.test <- wine.data[-wine.split.smpl, ]
+```
+
+### Algorithm Plan
+
+Looking at the data, there is one obvious split point between varietals 1 and 3, so, dividing 
+
+1. Split the data into the cross-validation sets:
+* 120 in training set
+* 18 in test set
+2. Create a decision tree for the training cv set.
+* Need 3 leaves
+* For first split, check flavanoids. <= 1.88, must be either 3 or 2; >= 1.89, must be either 1 or 2.
+(To get this, the difference between p0 of Varietal 1 and p100 of Varietal 3 is 0.62. I chose the midpoint of this difference as a buffer that will still clearly separate the varietals.) Because this is an obvious split discovered by the EDA, I'll assume this split is a given.
+* Calculate proportions for each remaining branch.
+* On each branch, for each remaining parameter, formulate a question to divide all observations into 1 varietal class.
+* Calculate impurity for each division.
+* Choose lowest impurity and store for that branch division.
+3. Run decision tree for test set.
+4. Calculate the accuracy of the test set decision tree.
+5. Repeat process 4 more times.
+
+```{r cv}
+
+cv_temp <- sample.int(n = 138, size = 120, replace = FALSE)
+cv_temp_train <- wine.full.train[cv_temp, ]
+cv_temp_test <- wine.full.train[-cv_temp, ]
+
+```
+
+
+```{r}
+
+# testing filter of flavanoids
+
+branch.1a <- filter(cv_temp_train, flavanoids >= 1.89) # Varietal 1 or 2
+branch.2a <- filter(cv_temp_train, flavanoids <= 1.88) # Varietal 2 or 3
+
+(p_1.branch.1a <- nrow(filter(branch.1a, varietal == 1)) / nrow(branch.1a))
+(p_2.branch.1a <- nrow(filter(branch.1a, varietal == 2)) / nrow(branch.1a))
+(p_2.branch.1a <- nrow(filter(branch.1a, varietal == 3)) / nrow(branch.1a))
+(p_1.branch.2a <- nrow(filter(branch.2a, varietal == 1)) / nrow(branch.2a))
+(p_2.branch.2a <- nrow(filter(branch.2a, varietal == 2)) / nrow(branch.2a))
+(p_3.branch.2a <- nrow(filter(branch.2a, varietal == 3)) / nrow(branch.2a))
+
+
+```
+```{r }
+
+# further flavanoid filtering
+leaf.1a_2 <- filter(branch.1a, flavanoids < 2.19) # MUST be Varietal 2
+branch.1b <- filter(branch.1a, flavanoids >= 2.19) # Varietal 1 or 2, but with better purity.
+
+(p_1.leaf.1a <- nrow(filter(leaf.1a_2, varietal == 1)) / nrow(leaf.1a_2))
+(p_2.leaf.1a <- nrow(filter(leaf.1a_2, varietal == 2)) / nrow(leaf.1a_2))
+(p_1.branch.1b <- nrow(filter(branch.1b, varietal == 1)) / nrow(branch.1b))
+(p_2.branch.1b <- nrow(filter(branch.1b, varietal == 2)) / nrow(branch.1b))
+
+leaf.2a_2 <- filter(branch.2a, flavanoids > 1.57) # MUST be Varietal 2
+branch.2b <- filter(branch.2a, flavanoids <= 1.57) # Varietal 2 or 3, but with better purity.
+
+(p_2.leaf.2a <- nrow(filter(leaf.2a_2, varietal == 2)) / nrow(leaf.2a_2))
+(p_3.leaf.2a <- nrow(filter(leaf.2a_2, varietal == 3)) / nrow(leaf.2a_2))
+(p_2.branch.2b <- nrow(filter(branch.2b, varietal == 2)) / nrow(branch.2b))
+(p_3.branch.2b <- nrow(filter(branch.2b, varietal == 3)) / nrow(branch.2b))
+
+
+```
+
+Excellent. 2 leaves perfectly classified, which is about 20% of this subtraining set. 1st branch is around 68% pure, and 2nd is at about 82% pure. (Flavanoids is column 7)
+
+Now to functionalize it!
+
+```{r }
+# flavanoid filter function
+
+flav_filt <- function(X){
+  branch.1a <- filter(X, flavanoids >= 1.89) # Varietal 1 or 2
+  leaf.1b <- filter(branch.1a, flavanoids < 2.19) # MUST be Varietal 2
+  branch.1b <- filter(branch.1a, flavanoids >= 2.19) # Varietal 1 or 2, but with better purity.)
+  branch.2a <- filter(X, flavanoids <= 1.88) # Varietal 2 or 3
+  leaf.2b <- filter(branch.2a, flavanoids > 1.57) # MUST be Varietal 2
+  branch.2b <- filter(branch.2a, flavanoids <= 1.57) # Varietal 2 or 3, but with better purity.
+  
+  root <<- list(leaf.1b = leaf.1b, branch.1b = branch.1b, branch.2b = branch.2b, leaf.2b = leaf.2b) # branches created
+  return(root)
+}
+```
+
+Need to be able to calculate impurities of branches.
+
+```{r }
+# calculate branch impurities
+
+branch_impurity <- function(branch, varietal1, varietal2){
+  p_v1 <-  nrow(filter(branch, varietal == varietal1)) / nrow(branch)
+  p_v2 <-  nrow(filter(branch, varietal == varietal2)) / nrow(branch)
+  
+  purity.v1 <<- print(paste0(varietal1, ":", p_v1, sep = ","))
+  purity.v2 <<- print(paste0(varietal2, ":", p_v2, sep = ","))
+  
+  return(list(purity.v1, purity.v2))
+}
+```
+
+
+So, now the challenge becomes classifying along the two branches.
+
+In an ideal world, my programming skills would be keen enough to create a loop that would search through each parameter of the remaining branches, compare quartiles of the numeric and integer parameters, and divide the branches based on those quartiles that perform best.
+
+But, this is where we are.
+
+```{r }
+# creating new datasets to work with, don't need flavanoids any longer
+
+root <- flav_filt(cv_temp_train)
+
+leaf.1b <- as.data.frame(root$leaf.1b[-7])
+branch.1b <- as.data.frame(root$branch.1b[-7])
+branch.2b <- as.data.frame(root$branch.2b[-7])
+leaf.2b <- as.data.frame(root$leaf.2b[-7])
+```
+
+Ok, now there are datasets without the variable already filtered out by hand. Because Flavanoids is an obvious split, I'll assume all branches start at this split and will work on finding a way to classify 1 from 2 and 2 from 3, but 1 and 3 are already clearly split.
+
+
+
+```{r }
+
+# gathering statistics to compare parameters - toy sample
+
+multi.stats <- function(stat){
+  c(mean = mean(stat), sd = sd(stat))
+}
+
+leaf.1b.stats <- sapply(leaf.1b[1:12], multi.stats)
+
+```
+
+With statistics gathered, I can compare probabilities that a value will belong to one varietal over another based on the parameter distribution for that varietal. So, to test, I'll run it on the branch separating 1 from 2.
+
+```{r}
+branch.3a_1 <- filter(branch.1b, varietal == 1)
+branch.3a_1 <- sapply(branch.3a_1[1:12], multi.stats)
+
+branch.3a_2 <- filter(branch.1b, varietal == 2)
+branch.3a_2 <- sapply(branch.3a_2[1:12], multi.stats)
+
+```
+
+Calculating probability of an observation being varietal 1 for the first split after Flavanoids.
+
+```{r}
+branch.3a_1.prob = data.frame()
+
+for (i in 1:nrow(branch.1b)){
+  for (j in 1:ncol(branch.1b[1:12])){
+    branch.3a_1.prob[i,j] <- dnorm(branch.1b[i, j], mean = branch.3a_1[1,j], sd = branch.3a_1[2,j])
+  }
+}
+```
+
+Calculating the probability of an observation being varietal 2 for the first split after Flavanoids.
+
+```{r}
+branch.3a_2.prob = data.frame()
+
+for (i in 1:nrow(branch.1b)){
+  for (j in 1:ncol(branch.1b[1:12])){
+    branch.3a_2.prob[i,j] <- dnorm(branch.1b[i, j], mean = branch.3a_2[1,j], sd = branch.3a_2[2,j])
+  }
+}
+```
+
+Compare the probabilities, with the greater value declaring the winner.
+
+```{r}
+branch.3a.winners = data.frame()
+
+for (i in 1:nrow(branch.3a_1.prob)){
+  for (j in 1:ncol(branch.3a_1.prob)){
+    if (branch.3a_1.prob[i,j] > branch.3a_2.prob[i,j]) {
+      branch.3a.winners[i,j] = 1
+    } else {
+      branch.3a.winners[i,j] = 2
+    }
+    }
+  }
+
+```
+
+Add the true answers.
+
+```{r}
+branch.3a.winners <- cbind(branch.3a.winners, truth = branch.1b$varietal)
+```
+
+Calculate accuracy of each parameter.
+
+```{r}
+truth_meter = 0
+
+branch.3a.accuracy = data.frame()
+
+for (j in 1:ncol(branch.3a.winners[1:12])){
+    for (i in 1:nrow(branch.3a.winners)){
+    if (branch.3a.winners[i,j] == branch.3a.winners[i,13]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  accuracy = truth_meter / nrow(branch.3a.winners) * 100
+  branch.3a.accuracy[1,j] = accuracy
+  truth_meter = 0
+}
+
+```
+
+OH MY GOD I DID SOMETHING. WHAT.
+
+For this dataset, proline and alcohol produce the most accurate splits right off, with proline being 91% accurate and alcohol coming in a close second at 89%.
+
+```{r}
+branch.3a_1[,12]
+branch.3a_2[,12]
+
+branch.3a_1[,1]
+branch.3a_2[,1]
+```
+
+Before I decide on this as a sorting method, I want to check the accuracy of the parameters on the other branch.
+
+```{r}
+branch.4a_2 <- filter(branch.2b, varietal == 2)
+branch.4a_2 <- sapply(branch.4a_2[1:12], multi.stats)
+
+branch.4a_3 <- filter(branch.2b, varietal == 3)
+branch.4a_3 <- sapply(branch.4a_3[1:12], multi.stats)
+```
+
+```{r}
+branch.4a_2.prob = data.frame()
+
+for (i in 1:nrow(branch.2b)){
+  for (j in 1:ncol(branch.2b[1:12])){
+    branch.4a_2.prob[i,j] <- dnorm(branch.2b[i, j], mean = branch.4a_2[1,j], sd = branch.4a_2[2,j])
+  }
+}
+
+branch.4a_3.prob = data.frame()
+
+for (i in 1:nrow(branch.2b)){
+  for (j in 1:ncol(branch.2b[1:12])){
+    branch.4a_3.prob[i,j] <- dnorm(branch.2b[i, j], mean = branch.4a_3[1,j], sd = branch.4a_3[2,j])
+  }
+}
+```
+
+
+```{r}
+branch.4a.winners = data.frame()
+
+for (i in 1:nrow(branch.4a_2.prob)){
+  for (j in 1:ncol(branch.4a_2.prob)){
+    if (branch.4a_2.prob[i,j] > branch.4a_3.prob[i,j]) {
+      branch.4a.winners[i,j] = 2
+    } else {
+      branch.4a.winners[i,j] = 3
+    }
+    }
+}
+
+branch.4a.winners <- cbind(branch.4a.winners, truth = branch.2b$varietal)
+```
+
+
+```{r}
+truth_meter = 0
+
+branch.4a.accuracy = data.frame()
+
+for (j in 1:ncol(branch.4a.winners[1:12])){
+    for (i in 1:nrow(branch.4a.winners)){
+    if (branch.4a.winners[i,j] == branch.4a.winners[i,13]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  accuracy = truth_meter / nrow(branch.4a.winners) * 100
+  branch.4a.accuracy[1,j] = accuracy
+  truth_meter = 0
+}
+
+```
+
+
+For this side, accuracy gets as high as 92.7% in alc_ash, and 90% in both ash and hue. Since there are 3 well performing variables, I'd like to add a consensus trial, awarding the winner to the varietal that scores in 2 of 3 parameters.
+
+```{r}
+branch.4a.CONwinners = data.frame()
+consensus.index <- c(3, 4, 10)
+
+for (i in 1:nrow(branch.4a_2.prob)){
+  for (j in 1:length(consensus.index)){
+    if (branch.4a_2.prob[i,j] > branch.4a_3.prob[i,j]) {
+      branch.4a.CONwinners[i,j] = 2
+    } else {
+      branch.4a.CONwinners[i,j] = 3
+    }
+  }
+  if ((sum(branch.4a.CONwinners[i,1:3])/3) < 2.4) {
+    branch.4a.CONwinners[i,4] = 2
+  } else {
+    branch.4a.CONwinners[i,4] = 3
+  }
+}
+
+branch.4a.CONwinners <- cbind(branch.4a.CONwinners, truth = branch.2b$varietal)
+```
+
+```{r}
+truth_meter = 0
+
+branch.4a.CONaccuracy = data.frame()
+
+    for (i in 1:nrow(branch.4a.CONwinners)){
+    if (branch.4a.CONwinners[i,4] == branch.4a.CONwinners[i,5]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  accuracy = truth_meter / nrow(branch.4a.CONwinners) * 100
+  branch.4a.CONaccuracy[1,1] = accuracy
+
+```
+
+Unfortunately, consensus did not improve prediction over using just alc_ash, and in fact, in this training set, was a little worse. I have much disappoint. 
+
+Next, I intend to test predicting these branches based on the findings: 1 from 2 predicted with proline, and 2 from 3 predicted with alc_ash.
+
+```{r }
+
+# cv test data
+
+flav_filt(cv_temp_test)
+
+leaf.1b_t <- as.data.frame(root$leaf.1b[-7])
+branch.1b_t <- as.data.frame(root$branch.1b[-7])
+branch.2b_t <- as.data.frame(root$branch.2b[-7])
+leaf.2b_t <- as.data.frame(root$leaf.2b[-7])
+
+```
+```{r }
+
+# predict values for 1st branch
+
+branch.1b_t_predict <- data.frame()
+
+# Probability of varietal 1
+
+for (i in 1:nrow(branch.1b_t)) { 
+  branch.1b_t_predict[i, 1] <- dnorm(branch.1b_t[i, 12], mean = branch.3a_1[1,12], sd = branch.3a_1[2,12])
+}
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.1b_t)) {
+  branch.1b_t_predict[i, 2] <- dnorm(branch.1b_t[i, 12], mean = branch.3a_2[1,12], sd = branch.3a_2[2,12])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.1b_t)) {
+  if (branch.1b_t_predict[i,1] > branch.1b_t_predict[i,2]) {
+    branch.1b_t_predict[i,3] <- 1
+  } else {
+    branch.1b_t_predict[i,3] <- 2
+  }
+}
+
+branch.1b_t_predict <- cbind(branch.1b_t_predict, truth = branch.1b_t$varietal)
+```
+
+```{r}
+truth_meter = 0
+
+branch.1b_t_accuracy = data.frame()
+
+    for (i in 1:nrow(branch.1b_t_predict)){
+    if (branch.1b_t_predict[i,3] == branch.1b_t_predict[i,4]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  branch.1b_t_accuracy = truth_meter / nrow(branch.1b_t_predict) * 100
+  branch.1b_t_accuracy
+
+```
+
+87.5% accuracy for the second branch in the first CV test.
+
+```{r }
+# predict values for 2nd branch
+
+branch.2b_t_predict <- data.frame()
+
+# Probability of varietal 1
+
+for (i in 1:nrow(branch.2b_t)) { 
+  branch.2b_t_predict[i, 1] <- dnorm(branch.2b_t[i, 4], mean = branch.4a_2[1,4], sd = branch.4a_2[2,4])
+}
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.2b_t)) {
+  branch.2b_t_predict[i, 2] <- dnorm(branch.2b_t[i, 4], mean = branch.4a_3[1,4], sd = branch.4a_3[2,4])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.2b_t)) {
+  if (branch.2b_t_predict[i,1] > branch.2b_t_predict[i,2]) {
+    branch.2b_t_predict[i,3] <- 2
+  } else {
+    branch.2b_t_predict[i,3] <- 3
+  }
+}
+
+branch.2b_t_predict <- cbind(branch.2b_t_predict, truth = branch.2b_t$varietal)
+```
+
+```{r}
+truth_meter = 0
+
+branch.2b_t_accuracy = data.frame()
+
+    for (i in 1:nrow(branch.2b_t_predict)){
+    if (branch.2b_t_predict[i,3] == branch.2b_t_predict[i,4]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  branch.2b_t_accuracy = truth_meter / nrow(branch.2b_t_predict) * 100
+  branch.2b_t_accuracy
+```
+
+83% accuracy for the second branch dividing 2 from 3.
+
+### Functionify Some Things.
+
+I already have the function ready to split the data along the flavanoid axis, and also to help with gathering statistics.
+
+```{r }
+# function for accuracy
+# Calls function truthometer with dataframe X and column index for the predict value and column index for the truth value.
+
+truthometer <- function(X, predict, truth) {
+  truth_meter = 0
+  
+  for (i in 1:nrow(X)){
+    if (X[i,predict] == X[i,truth]) {
+    truth_meter = truth_meter + 1
+    }
+  }
+  
+  accuracy = truth_meter / nrow(X) * 100
+  
+  return(accuracy)
+}
+```
+
+Overall accuracy would take into account the properly classified leaves, which of course I didn't calculate before I resorted the data. -_- I'll do that on the next one.
+
+
+### Planting the Forest a Tree at a Time
+
+2nd CV, same song, second verse, a little bit louder, hopefully not less worse.
+
+```{r }
+
+# new sample data from training set
+
+cv_temp <- sample.int(n = 138, size = 120, replace = FALSE)
+cv_temp_train <- wine.full.train[cv_temp, ]
+cv_temp_test <- wine.full.train[-cv_temp, ]
+```
+
+
+```{r}
+flav_filt(cv_temp_train)
+
+leaf.1b <- as.data.frame(root$leaf.1b[-7])
+branch.1b <- as.data.frame(root$branch.1b[-7])
+branch.2b <- as.data.frame(root$branch.2b[-7])
+leaf.2b <- as.data.frame(root$leaf.2b[-7])
+```
+```{r}
+branch_impurity(branch.1b, 1, 2)
+branch_impurity(leaf.1b, 1, 2)
+branch_impurity(branch.2b, 2, 3)
+branch_impurity(leaf.2b, 2, 3)
+
+```
+
+Leaves look properly classified, and proportions look similar to earlier. Moving on to look at statistics and probabilities.
+
+```{r}
+# Gather statistics about each varietal
+
+branch.3a_1 <- filter(branch.1b, varietal == 1)
+branch.3a_1 <- sapply(branch.3a_1[1:12], multi.stats)
+
+branch.3a_2 <- filter(branch.1b, varietal == 2)
+branch.3a_2 <- sapply(branch.3a_2[1:12], multi.stats)
+
+# Determine probability of each varietal
+
+branch.3a_1.prob = data.frame()
+
+for (i in 1:nrow(branch.1b)){
+  for (j in 1:ncol(branch.1b[1:12])){
+    branch.3a_1.prob[i,j] <- dnorm(branch.1b[i, j], mean = branch.3a_1[1,j], sd = branch.3a_1[2,j])
+  }
+}
+
+# Declare winner based on probabilities
+
+branch.3a.winners = data.frame()
+
+for (i in 1:nrow(branch.3a_1.prob)){
+  for (j in 1:ncol(branch.3a_1.prob)){
+    if (branch.3a_1.prob[i,j] > branch.3a_2.prob[i,j]) {
+      branch.3a.winners[i,j] = 1
+    } else {
+      branch.3a.winners[i,j] = 2
+    }
+    }
+}
+
+# Add truth
+
+branch.3a.winners <- cbind(branch.3a.winners, truth = branch.1b$varietal)
+
+# Calculate Accuracy
+
+truth_meter = 0
+branch.3a.accuracy = data.frame()
+
+for (j in 1:ncol(branch.3a.winners[1:12])){
+    for (i in 1:nrow(branch.3a.winners)){
+    if (branch.3a.winners[i,j] == branch.3a.winners[i,13]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  accuracy = truth_meter / nrow(branch.3a.winners) * 100
+  branch.3a.accuracy[1,j] = accuracy
+  truth_meter = 0
+}
+
+```
+
+The most accurate predictor was alcohol for this branch at 81% (column 1). This time column 12 (proline) only appears 60% accurate.
+
+```{r}
+branch.4a_2 <- filter(branch.2b, varietal == 2)
+branch.4a_2 <- sapply(branch.4a_2[1:12], multi.stats)
+
+branch.4a_3 <- filter(branch.2b, varietal == 3)
+branch.4a_3 <- sapply(branch.4a_3[1:12], multi.stats)
+
+branch.4a_2.prob = data.frame()
+
+for (i in 1:nrow(branch.2b)){
+  for (j in 1:ncol(branch.2b[1:12])){
+    branch.4a_2.prob[i,j] <- dnorm(branch.2b[i, j], mean = branch.4a_2[1,j], sd = branch.4a_2[2,j])
+  }
+}
+
+branch.4a_3.prob = data.frame()
+
+for (i in 1:nrow(branch.2b)){
+  for (j in 1:ncol(branch.2b[1:12])){
+    branch.4a_3.prob[i,j] <- dnorm(branch.2b[i, j], mean = branch.4a_3[1,j], sd = branch.4a_3[2,j])
+  }
+}
+
+branch.4a.winners = data.frame()
+
+for (i in 1:nrow(branch.4a_2.prob)){
+  for (j in 1:ncol(branch.4a_2.prob)){
+    if (branch.4a_2.prob[i,j] > branch.4a_3.prob[i,j]) {
+      branch.4a.winners[i,j] = 2
+    } else {
+      branch.4a.winners[i,j] = 3
+    }
+    }
+}
+
+# Add Truth
+
+branch.4a.winners <- cbind(branch.4a.winners, truth = branch.2b$varietal)
+
+# Calculate Accuracy
+
+truth_meter = 0
+branch.4a.accuracy = data.frame()
+
+for (j in 1:ncol(branch.4a.winners[1:12])){
+    for (i in 1:nrow(branch.4a.winners)){
+    if (branch.4a.winners[i,j] == branch.4a.winners[i,13]){
+      truth_meter = truth_meter + 1
+    }
+    }
+  accuracy = truth_meter / nrow(branch.4a.winners) * 100
+  branch.4a.accuracy[1,j] = accuracy
+  truth_meter = 0
+}
+```
+
+Once again, alc_ash, ash, and hue all predict with 90% or higher accuracy. alc_ash is the highest with 92%.
+
+```{r }
+
+# CV TEST ALL THE THINGS
+
+flav_filt(cv_temp_test)
+
+leaf.1b_t <- as.data.frame(root$leaf.1b[-7])
+branch.1b_t <- as.data.frame(root$branch.1b[-7])
+branch.2b_t <- as.data.frame(root$branch.2b[-7])
+leaf.2b_t <- as.data.frame(root$leaf.2b[-7])
+
+branch.1b_t_predict <- data.frame()
+
+# Probability of varietal 1
+
+for (i in 1:nrow(branch.1b_t)) { 
+  branch.1b_t_predict[i, 1] <- dnorm(branch.1b_t[i, 5], mean = branch.3a_1[1,5], sd = branch.3a_1[2,5])
+}
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.1b_t)) {
+  branch.1b_t_predict[i, 2] <- dnorm(branch.1b_t[i, 5], mean = branch.3a_2[1,5], sd = branch.3a_2[2,5])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.1b_t)) {
+  if (branch.1b_t_predict[i,1] > branch.1b_t_predict[i,2]) {
+    branch.1b_t_predict[i,3] <- 1
+  } else {
+    branch.1b_t_predict[i,3] <- 2
+  }
+}
+
+branch.1b_t_predict <- cbind(branch.1b_t_predict, truth = branch.1b_t$varietal)
+
+
+branch.2b_t_predict <- data.frame()
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.2b_t)) { 
+  branch.2b_t_predict[i, 1] <- dnorm(branch.2b_t[i, 4], mean = branch.4a_2[1,4], sd = branch.4a_2[2,4])
+}
+
+# Probability of varietal 3
+
+for (i in 1:nrow(branch.2b_t)) {
+  branch.2b_t_predict[i, 2] <- dnorm(branch.2b_t[i, 4], mean = branch.4a_3[1,4], sd = branch.4a_3[2,4])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.2b_t)) {
+  if (branch.2b_t_predict[i,1] > branch.2b_t_predict[i,2]) {
+    branch.2b_t_predict[i,3] <- 2
+  } else {
+    branch.2b_t_predict[i,3] <- 3
+  }
+}
+
+branch.2b_t_predict <- cbind(branch.2b_t_predict, truth = branch.2b_t$varietal)
+```
+
+```{r}
+branch_1b_t_accuracy <- truthometer(branch.1b_t_predict, 3, 4)
+branch_2b_t_accuracy <- truthometer(branch.2b_t_predict, 3, 4)
+```
+
+This time my separation between 1 and 2 is 77.78% accurate (using alcohol as the parameter), and separation between 2 and 3 is 88.33% using alc_ash as the defining boundary.
+
+```{r}
+total_accuracy <- (nrow(leaf.1b_t) + nrow(leaf.2b_t) + nrow(branch.1b_t_predict) * (branch_1b_t_accuracy/100) + nrow(branch.2b_t_predict) * (branch_2b_t_accuracy)/100) / nrow(cv_temp_test)
+```
+
+Total Accuracy for the second tree is 83.33%.
+
+I think I'll run it one more time.
+
+For the 3rd CV run, on the training data, once again, alcohol most accurately splits 1 and 2 at 81%, while alc_ash splits 2 and 3 at 91% accuracy. Alc_ash seems to be pretty consistent, but separating varieties 1 and 2 continues to be challenging.
+
+Total Accuracy for the 3rd tree is 88.9%.
+
+On the 4th run, alcohol splits the training data with 81% accuracy to split 1 and 2. Alc_ash is at 93% accuracy splitting 2 and 3.
+
+Total Accuracy for the 4th tree is 88.9%.
+
+For the 5th tree, Mg splits 1 and 2 most accurately at 80.4%, and alc_ash and hue most accurately split 2 and 3 at 90.5%. I'll split the test data on Mg this time for 1 and 2.
+
+Total accuracy for the 5th tree is 94.4%.
+
+Since I was not smart enough to save each of the CVs, I have no idea how well Mg performed in the other trials. I'll run a 6th tree to check.
+
+On the 6th trial, Mg most accurately splits the training data for 1 and 2 at 85%, and this time 10 split 2 and 3 most accurately at 95.2%. But, total accuracy is only 77.8%. If I switch back to using alc_ash (90.5%) to split 2 and 3, total accuracy goes up to 83.3%.
+
+On the 6 trials, it appears to most accurately split 1 and 2, Mg does well. To consistently split 2 and 3, alc_ash.
+
+On to the final test!
+
+```{r}
+flav_filt(wine.final.test)
+
+leaf.1b_t <- as.data.frame(root$leaf.1b[-7])
+branch.1b_t <- as.data.frame(root$branch.1b[-7])
+branch.2b_t <- as.data.frame(root$branch.2b[-7])
+leaf.2b_t <- as.data.frame(root$leaf.2b[-7])
+
+branch.1b_t_predict <- data.frame()
+
+# Probability of varietal 1
+
+for (i in 1:nrow(branch.1b_t)) { 
+  branch.1b_t_predict[i, 1] <- dnorm(branch.1b_t[i, 1], mean = branch.3a_1[1,1], sd = branch.3a_1[2,1])
+}
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.1b_t)) {
+  branch.1b_t_predict[i, 2] <- dnorm(branch.1b_t[i, 1], mean = branch.3a_2[1,1], sd = branch.3a_2[2,1])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.1b_t)) {
+  if (branch.1b_t_predict[i,1] > branch.1b_t_predict[i,2]) {
+    branch.1b_t_predict[i,3] <- 1
+  } else {
+    branch.1b_t_predict[i,3] <- 2
+  }
+}
+
+branch.1b_t_predict <- cbind(branch.1b_t_predict, truth = branch.1b_t$varietal)
+
+
+branch.2b_t_predict <- data.frame()
+
+# Probability of varietal 2
+
+for (i in 1:nrow(branch.2b_t)) { 
+  branch.2b_t_predict[i, 1] <- dnorm(branch.2b_t[i, 10], mean = branch.4a_2[1,10], sd = branch.4a_2[2,10])
+}
+
+# Probability of varietal 3
+
+for (i in 1:nrow(branch.2b_t)) {
+  branch.2b_t_predict[i, 2] <- dnorm(branch.2b_t[i, 10], mean = branch.4a_3[1,10], sd = branch.4a_3[2,10])
+}
+
+# Predicted value based on varietal probability
+
+for (i in 1:nrow(branch.2b_t)) {
+  if (branch.2b_t_predict[i,1] > branch.2b_t_predict[i,2]) {
+    branch.2b_t_predict[i,3] <- 2
+  } else {
+    branch.2b_t_predict[i,3] <- 3
+  }
+}
+
+branch.2b_t_predict <- cbind(branch.2b_t_predict, truth = branch.2b_t$varietal)
+```
+
+```{r}
+branch_1b_t_accuracy <- truthometer(branch.1b_t_predict, 3, 4)
+branch_2b_t_accuracy <- truthometer(branch.2b_t_predict, 3, 4)
+
+total_accuracy <- (nrow(leaf.1b_t) + nrow(leaf.2b_t) + nrow(branch.1b_t_predict) * (branch_1b_t_accuracy/100) + nrow(branch.2b_t_predict) * (branch_2b_t_accuracy)/100) / nrow(wine.final.test)
+```
+
+Total Accuracy in predicting the final test is 82.5% splitting 1 and 2 with alcohol, 2 and 3 with alc_ash, and 1 and 3 with flavanoids. The most surprising part about this is my split of 1 and 2 was most accurate at 95.2% and the split between 2 and 3 was abysmal at 60%.
+
+I can up total accuracy to 97.5% if I split 2 and 3 by hue instead of alc_ash, which in the testing data provided 100% accuracy. With only 6 trees, this didn't come to light. However, if I would have been able to find a way to duplicate this 1000 times, it's possible hue could have been more obvious as a better splitting parameter in this case.
