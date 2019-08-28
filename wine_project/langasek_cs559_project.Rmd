@@ -171,7 +171,7 @@ cv_temp_test <- wine.full.train[-cv_temp, ]
 
 ```{r}
 
-# testing filter of flavanoids
+# testing filter of flavanoids by checking impurity.
 
 branch.1a <- filter(cv_temp_train, flavanoids >= 1.89) # Varietal 1 or 2
 branch.2a <- filter(cv_temp_train, flavanoids <= 1.88) # Varietal 2 or 3
@@ -585,6 +585,17 @@ branch.2b_t_accuracy = data.frame()
 
 I already have the function ready to split the data along the flavanoid axis, and also to help with gathering statistics.
 
+```{r}
+# function for impurity
+
+impurity <- function(X, predicted_varietal) {
+  impurity <- nrow(filter(X, varietal == predicted_varietal)) / nrow(X)
+  return(impurity)
+}
+
+```
+
+
 ```{r }
 # function for accuracy
 # Calls function truthometer with dataframe X and column index for the predict value and column index for the truth value.
@@ -850,7 +861,7 @@ Since I was not smart enough to save each of the CVs, I have no idea how well Mg
 
 On the 6th trial, Mg most accurately splits the training data for 1 and 2 at 85%, and this time 10 split 2 and 3 most accurately at 95.2%. But, total accuracy is only 77.8%. If I switch back to using alc_ash (90.5%) to split 2 and 3, total accuracy goes up to 83.3%.
 
-On the 6 trials, it appears to most accurately split 1 and 2, Mg does well. To consistently split 2 and 3, alc_ash.
+On the 6 trials, it appears to most accurately split 1 and 2, Mg does well, but alcohol is most consistent. To consistently split 2 and 3, alc_ash.
 
 On to the final test!
 
@@ -916,13 +927,68 @@ for (i in 1:nrow(branch.2b_t)) {
 branch.2b_t_predict <- cbind(branch.2b_t_predict, truth = branch.2b_t$varietal)
 ```
 
+
 ```{r}
 branch_1b_t_accuracy <- truthometer(branch.1b_t_predict, 3, 4)
 branch_2b_t_accuracy <- truthometer(branch.2b_t_predict, 3, 4)
 
 total_accuracy <- (nrow(leaf.1b_t) + nrow(leaf.2b_t) + nrow(branch.1b_t_predict) * (branch_1b_t_accuracy/100) + nrow(branch.2b_t_predict) * (branch_2b_t_accuracy)/100) / nrow(wine.final.test)
+
 ```
 
 Total Accuracy in predicting the final test is 82.5% splitting 1 and 2 with alcohol, 2 and 3 with alc_ash, and 1 and 3 with flavanoids. The most surprising part about this is my split of 1 and 2 was most accurate at 95.2% and the split between 2 and 3 was abysmal at 60%.
 
 I can up total accuracy to 97.5% if I split 2 and 3 by hue instead of alc_ash, which in the testing data provided 100% accuracy. With only 6 trees, this didn't come to light. However, if I would have been able to find a way to duplicate this 1000 times, it's possible hue could have been more obvious as a better splitting parameter in this case.
+
+Let's go ahead and create the leaves and test the impurity on each of the new 4 leaves.
+
+```{r}
+
+# Create Leaves to split 1 from 2 based on alcohol.
+
+leaf.3b_1 <- data.frame()
+leaf.3b_2 <- data.frame()
+
+for (i in 1:nrow(branch.1b_t)) { 
+  if 
+  (dnorm(branch.1b_t[i, 1], mean = branch.3a_1[1,1], sd = branch.3a_1[2,1]) 
+   >= dnorm(branch.1b_t[i, 1], mean = branch.3a_2[1,1], sd = branch.3a_2[2,1])) 
+    {
+    leaf.3b_1 <- rbind(leaf.3b_1, branch.1b_t[i,])
+  } else {
+    leaf.3b_2 <- rbind(leaf.3b_2, branch.1b_t[i,])
+  }
+}
+
+# Create Leaves to split 2 from 3 based on alc_ash
+
+leaf.4b_2 <- data.frame()
+leaf.4b_3 <- data.frame()
+
+ for (i in 1:nrow(branch.1b_t)) {
+  if
+   (dnorm(branch.2b_t[i, 4], mean = branch.4a_2[1,4], sd = branch.4a_2[2,4])
+    >= dnorm(branch.2b_t[i, 4], mean = branch.4a_3[1,4], sd = branch.4a_3[2,4]))
+    {
+     leaf.4b_2 <- rbind(leaf.4b_2, branch.2b_t[i,])
+   } else {
+     leaf.4b_3 <- rbind(leaf.4b_3, branch.2b_t[i,])
+   }
+ }
+```
+I'm getting an error on this, but it's still building a data frame with the right number of observations, and I don't see where the code is wrong, so ...  moving on.
+
+```{r}
+(leaf.3b_1_impurity <- impurity(leaf.3b_1, 1))
+(leaf.3b_2_impurity <- impurity(leaf.3b_2, 2))
+
+(leaf.4b_2_impurity <- impurity(leaf.4b_2, 2))
+(leaf.4b_3_impurity <- impurity(leaf.4b_3, 3))
+```
+
+[1] 1
+[1] 0.8571429
+[1] 0
+[1] 0.6923077
+
+Impurity results are really interesting. On the testing set, I was able to almost fully classify all 1 variety, with only 1 observation getting classified with the 2s. I was unable to isolate 2s outside of that and the first flavanoid split fully, and splitting 2 and 3 was highly challenging in the testing set with alc_ash. Knowing what I know now, it might look better with hue, but getting closer on the split between 1 and 2 will risk overfitting.
