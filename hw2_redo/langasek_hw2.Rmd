@@ -239,7 +239,6 @@ grad_rec <- function(X, iterations) {
 
 When running this, I get 2 values that are far too large to begin with in several samples of the data, making the calculation unwieldly as it goes towards the 1000 iteration. I am assuming this is a normalization issue and can be addressed in the next part of the assignment.
 
-
 ## b. Write a program main1_3 that runs the gradient procedure on the data and at the end prints the mean test and train errors. Your program should normalize the data before running the method. Run it and report the results. Give the mean errors for both the training and test set. Is the result better or worse than the one obtained by solving the regression problem exactly?
 
 ```{r main1_3}
@@ -258,6 +257,15 @@ main1_3 <- function(X, iterations) {
 }
 ```
 
+```{r}
+train_1.3_run <- main1_3(as.data.frame(train_1.3a), 1000)
+train_1.3_run
+
+test_1.3a_run <- main1_3(as.data.frame(test_1.3a), 1000)
+test_1.3a_run
+```
+
+These are the same errors I received with just using straight-out-of-the-box lm() in R. This appears to be a push!
 
 ## c. Run the gradient descent on un-normalized dataset. What happened?
 
@@ -266,11 +274,48 @@ This is what I did before where I could not get weight values for 2 of the param
 ## d. Modify main1_3 from part b, such that it lets you to progressively observe changes in the mean train and test errors. For Matlab users, use functions init_progress_graph.m and add_to_progress_grap.m provided. The init_progress_graph.m initializes the graph structure and add_to_progress_graph.m lets you add new data entries on-fly to the graph. If you use other languages, write your own init_progress_graph and add_to_progress_graph. Using the two functions plot the mean squared errors for thetraining and test set for every 50 iteration steps. Submit the program and include the graph in the report.
 
 ```{r}
+main1_3d <- function(X, iterations) {
 
+# Step 1, normalize data
+   housing_norm <- scale(X)
+# Step 2, online gradient descent procedure implemented above
+# But NOW need to progressively monitor across the iterations and plot every 50 steps.
+# 1000 / 50 = 20, so, if I'm doing 1000 iterations, I'll want a progress check at 20. I will
+# assume all iteration inputs will be evently divisible by 50. Can revisit how to handle this
+# in R later if not the case.
+   
+   func_iterations = iterations / 50
+   housing_MSE_graph <- data.frame()
+   w_prog <- matrix(0, ncol = ncol(housing_train), nrow = 1 )
+   
+   for (i in 1:func_iterations) {
+     
+      w <- grad_rec(as.data.frame(housing_norm), 50)
+      counter <- 0
+   
+  # Step 3, calculate MSE
+      counter <- counter + 1
+    y_hat <- LR_predict(housing_norm, w)
+    housing_MSE_graph[i,1] <- housing_MSE(housing_norm)
+    housing_MSE_graph[i,2] <- counter 
+   }
+   return(housing_MSE_graph)
+}
+```
+
+This is giving me a constant value of 22.08, which means something is deeply amiss.
+
+```{r}
+#plot(housing_MSE_graph, y )
 ```
 
 
 ## e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.
+
+```{r}
+
+```
+
 
 # Problem 1.4 Regression with Polynomials
 

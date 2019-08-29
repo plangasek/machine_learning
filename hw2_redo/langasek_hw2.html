@@ -131,7 +131,7 @@ $(document).ready(function () {
 <pre class="r"><code># Class instructions are to not use packages, as such, this will only be for necessities
 library(skimr) # I like this for EDAs.</code></pre>
 <p><a href="mailto:harmoney@epona">harmoney@epona</a>:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing.txt 506 housing.txt</p>
-<pre class="r"><code>header &lt;- c('CRIM','ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS',
+<pre class="r"><code>header &lt;- c('CRIM','ZN','INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS',
             'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT', 'MEDV')
 housing &lt;- read.delim('housing.txt', sep =&quot;&quot;, header = FALSE)
 names(housing) &lt;- header</code></pre>
@@ -147,12 +147,12 @@ skim(housing)</code></pre>
 ##  n obs: 506 
 ##  n variables: 14 
 ## 
-## ── Variable type:integer ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:integer ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n  mean   sd p0 p25 p50 p75 p100     hist
 ##      CHAS       0      506 506 0.069 0.25  0   0   0   0    1 ▇▁▁▁▁▁▁▁
 ##       RAD       0      506 506 9.55  8.71  1   4   5  24   24 ▂▇▁▁▁▁▁▅
 ## 
-## ── Variable type:numeric ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:numeric ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n   mean     sd       p0     p25    p50
 ##       AGE       0      506 506  68.57  28.15   2.9     45.02   77.5 
 ##         B       0      506 506 356.67  91.29   0.32   375.38  391.44
@@ -183,7 +183,7 @@ skim(housing)</code></pre>
 <pre><code>## 
 ## Skim summary statistics
 ## 
-## ── Variable type:factor ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:factor ────────────────────────────────────────────────────────────────────────────────────
 ##                variable missing complete   n n_unique
 ##  as.factor(housing$RAD)       0      506 506        9
 ##                      top_counts ordered
@@ -338,9 +338,9 @@ for (i in loop.vector) {
 <h1>Problem 1.2 Linear Regression</h1>
 <p>Loading the training and test datasets.</p>
 <p><a href="mailto:harmoney@epona">harmoney@epona</a>:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing_train.txt 441 housing_train.txt <a href="mailto:harmoney@epona">harmoney@epona</a>:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing_test.txt 76 housing_test.txt</p>
-<pre class="r"><code>housing_train &lt;- read.delim('housing_train.txt', sep =&quot;&quot;, header = FALSE, quote = &quot;&quot;, comment.char = &quot;&quot;)
+<pre class="r"><code>housing_train &lt;- read.table('housing_train.txt', sep =&quot;&quot;, header = FALSE, quote = &quot;&quot;, comment.char = &quot;&quot;)
 names(housing_train) &lt;- header
-housing_test &lt;- read.delim('housing_test.txt', sep =&quot;&quot;, header = FALSE)
+housing_test &lt;- read.table('housing_test.txt', sep =&quot;&quot;, header = FALSE)
 names(housing_test) &lt;- header</code></pre>
 <p>There are missing lines in both file imports: 8 missing from the training file and 2 from the test. And after a very embarrassing amount of troubleshooting time, it was discovered that there are 8 blank lines at the end of the training file and 2 blank lines at the end of the test file. All data accounted for.</p>
 <pre class="r"><code>skim(housing_train)</code></pre>
@@ -348,12 +348,12 @@ names(housing_test) &lt;- header</code></pre>
 ##  n obs: 433 
 ##  n variables: 14 
 ## 
-## ── Variable type:integer ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:integer ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n  mean   sd p0 p25 p50 p75 p100     hist
 ##      CHAS       0      433 433 0.067 0.25  0   0   0   0    1 ▇▁▁▁▁▁▁▁
 ##       RAD       0      433 433 9.42  8.69  1   4   5  24   24 ▃▇▁▁▁▁▁▅
 ## 
-## ── Variable type:numeric ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:numeric ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n   mean     sd       p0     p25    p50
 ##       AGE       0      433 433  67.84  27.8    2.9     44.4    74.8 
 ##         B       0      433 433 362.31  84.57   0.32   376.75  392.33
@@ -385,12 +385,12 @@ names(housing_test) &lt;- header</code></pre>
 ##  n obs: 74 
 ##  n variables: 14 
 ## 
-## ── Variable type:integer ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:integer ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete  n   mean   sd p0 p25 p50 p75 p100     hist
 ##      CHAS       0       74 74  0.081 0.27  0   0   0   0    1 ▇▁▁▁▁▁▁▁
 ##       RAD       0       74 74 10.31  8.76  1   4   5  24   24 ▁▇▂▁▁▁▁▅
 ## 
-## ── Variable type:numeric ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:numeric ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete  n   mean     sd      p0    p25    p50    p75
 ##       AGE       0       74 74  70.81  30.07   6.8    43.4   84.1   95.38
 ##         B       0       74 74 325.99 119.31   2.6   321.02 386.68 394.62
@@ -417,7 +417,7 @@ names(housing_test) &lt;- header</code></pre>
 ##    8.26 ▁▁▂▇▇▅▁▁
 ##  711    ▂▆▇▂▁▁▁▇
 ##   80    ▇▁▁▁▁▁▁▁</code></pre>
-<p>It looks as if the distributions of the training and testing datasets are roughly representative, though there may be some representation issues in NOX and PTRatio in the testing set (or maybe poorly represnted in the training set).</p>
+<p>It looks as if the distributions of the training and testing datasets are roughly representative, though there may be some representation issues in NOX and PTRatio in the testing set (or maybe poorly represented in the training set).</p>
 <div id="a.-write-a-function-lr_solve-that-takes-x-and-y-components-of-the-data-x-is-a-matrix-of-inputs-where-rows-correspond-to-examples-and-returns-a-vector-of-coefficients-w-with-the-minimal-mean-square-fit.-hint-if-you-are-using-matlab-you-can-use-backslash-operator-to-do-the-least-squares-regression-directly-check-matlabs-help." class="section level2">
 <h2>a. Write a function LR_solve that takes X and y components of the data (X is a matrix of inputs where rows correspond to examples) and returns a vector of coefficients w with the minimal mean square fit. (Hint: If you are using Matlab, you can use backslash operator ’/’ to do the least squares regression directly; check Matlab’s help).</h2>
 <pre class="r"><code># LR_solve, X must be a matrix of inputs with the dependent variable as the last column, and all other columns are predictors.
@@ -452,17 +452,14 @@ LR_predict &lt;- function(X, w) {
 return(predictions) # gimme dose preds
 }</code></pre>
 </div>
-</div>
-<div id="late" class="section level1">
-<h1>LATE</h1>
 <div id="c.-write-and-submit-the-program-main1_2-that-loads-the-train-and-test-set-learns-the-weights-for-the-training-set-and-computes-the-mean-squared-error-of-your-predictor-on-both-the-training-and-testing-data-set." class="section level2">
 <h2>c. Write and submit the program main1_2 that loads the train and test set, learns the weights for the training set, and computes the mean squared error of your predictor on both the training and testing data set.</h2>
 <p><span class="math inline">\(J_{n}\)</span> = <span class="math inline">\(\frac{1}{n}\)</span> <span class="math display">\[\sum_{i=1,...n}(y_i - f(x_i))^2\]</span></p>
 <pre class="r"><code># Oh, I get it now.
 
-housing_train &lt;- read.delim('housing_train.txt', sep =&quot;&quot;, header = FALSE, quote = &quot;&quot;, comment.char = &quot;&quot;)
+housing_train &lt;- read.table('housing_train.txt', sep =&quot;&quot;, header = FALSE, quote = &quot;&quot;, comment.char = &quot;&quot;)
 names(housing_train) &lt;- header # probably not necessary, but helps my sanity as I'm looking over the data
-housing_test &lt;- read.delim('housing_test.txt', sep =&quot;&quot;, header = FALSE)
+housing_test &lt;- read.table('housing_test.txt', sep =&quot;&quot;, header = FALSE)
 names(housing_test) &lt;- header # as above
 
 w &lt;- LR_solve(housing_train) # train the model and extract the predictor weights.
@@ -488,20 +485,21 @@ housing_MSE &lt;- function(X) {
 test_MSE &lt;- housing_MSE(housing_test)
 train_MSE &lt;- housing_MSE(housing_train)</code></pre>
 </div>
-</div>
-<div id="late-1" class="section level1">
-<h1>LATE</h1>
 <div id="d.-in-your-report-please-list-the-resulting-weights-and-both-mean-square-errors.-compare-the-errors-for-the-training-and-testing-set.-which-one-is-better" class="section level2">
 <h2>d. In your report please list the resulting weights, and both mean square errors. Compare the errors for the training and testing set. Which one is better?</h2>
+<pre class="r"><code>w</code></pre>
+<pre><code>##   (Intercept)          CRIM            ZN         INDUS          CHAS 
+##  39.584321218  -0.101137046   0.045893530  -0.002730387   3.072013402 
+##           NOX            RM           AGE           DIS           RAD 
+## -17.225407182   3.711252355   0.007158625  -1.599002102   0.373623375 
+##           TAX       PTRATIO             B         LSTAT 
+##  -0.015756420  -1.024177030   0.009693215  -0.585969273</code></pre>
 <pre class="r"><code>test_MSE</code></pre>
 <pre><code>## [1] 11.5204</code></pre>
 <pre class="r"><code>train_MSE</code></pre>
 <pre><code>## [1] 22.08127</code></pre>
 <p>The error rate for the testing data set appears lower (and thus, better) than the one for the training set.</p>
 </div>
-</div>
-<div id="late-2" class="section level1">
-<h1>LATE</h1>
 </div>
 <div id="problem-1.3-online-gradient-descent" class="section level1">
 <h1>Problem 1.3 Online gradient descent</h1>
@@ -513,52 +511,97 @@ train_MSE &lt;- housing_MSE(housing_train)</code></pre>
 <li><p>repeat the update procedure for 1000 steps reusing the examples in the training data if neccessary (hint: the index of the i-th example in the training set can be obtained by (i mod n) operation);</p></li>
 <li><p>return the final set of weights.</p></li>
 </ul>
-<pre class="r"><code>grad_rec &lt;- function(X, iterations) {
+<pre class="r"><code># Data for this problem.
+
+train_1.3a &lt;- as.matrix(housing_train)
+test_1.3a &lt;- as.matrix(housing_test)
+
+
+train_ogd &lt;- cbind(1, train_1.3a) # add intercept integer.
+test_ogd &lt;- cbind(1, test_1.3a) # probably helpful to do for testing set as well.
+
+grad_rec &lt;- function(X, iterations) {
   set.seed(1235)
-  w = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-  current_iter &lt;- 1
-  alpha &lt;- 2 / current_iter
-  
+  X &lt;- cbind(1, X)
+  w = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
+  current_iter &lt;- 1 # Where we at, dawg
+  alpha &lt;- 2  
+  N &lt;- ncol(housing_train)
+
   for (i in 1:iterations) {
     current_row &lt;- X[sample(nrow(X), 1),]
-    sum_pred &lt;- 0
-    for (n in 1:13) {  # Calculate predicted values based on current weight vector.
-      sum_pred &lt;- sum_pred + w[n + 1] * current_row[n]
-    }
-    prediction &lt;- w[1] + sum_pred
-    w &lt;- w[1] + alpha * current_iter * (current_row[14] - prediction) * current_row[1:13]
+    gradient_vals &lt;- (1 / N) * (current_row[15] - t(w) * current_row[1:14]) * current_row[1:14]
+    w &lt;- w + alpha * t(gradient_vals) # update weights from this sample.
     current_iter &lt;- current_iter + 1
-    alpha &lt;- 2 / current_iter
-  }
+    alpha &lt;- 2 / current_iter # anneal learning rate per problem
+     } 
+  
   return(w)
 }</code></pre>
-<p>This doesn’t work yet. Will revisit. :( Pretty sure it’s a vector math fail. And since I can’t get this to work, I can do the remaining parts of this section. So, moving on until I brute force this.</p>
-<div id="notes-from-eric" class="section level4">
-<h4>Notes from Eric</h4>
-<p>For matrix multiplication, can use %*%</p>
-</div>
+<p>When running this, I get 2 values that are far too large to begin with in several samples of the data, making the calculation unwieldly as it goes towards the 1000 iteration. I am assuming this is a normalization issue and can be addressed in the next part of the assignment.</p>
 </div>
 <div id="b.-write-a-program-main1_3-that-runs-the-gradient-procedure-on-the-data-and-at-the-end-prints-the-mean-test-and-train-errors.-your-program-should-normalize-the-data-before-running-the-method.-run-it-and-report-the-results.-give-the-mean-errors-for-both-the-training-and-test-set.-is-the-result-better-or-worse-than-the-one-obtained-by-solving-the-regression-problem-exactly" class="section level2">
 <h2>b. Write a program main1_3 that runs the gradient procedure on the data and at the end prints the mean test and train errors. Your program should normalize the data before running the method. Run it and report the results. Give the mean errors for both the training and test set. Is the result better or worse than the one obtained by solving the regression problem exactly?</h2>
 <pre class="r"><code># This will need to be saved as a separate script once completed and handed in separately.
 
-# Step 1, normalize data
+main1_3 &lt;- function(X, iterations) {
 
-# Step 2, online gradient descent procedure implemented above</code></pre>
+# Step 1, normalize data
+   housing_norm &lt;- scale(X)
+# Step 2, online gradient descent procedure implemented above
+    w &lt;- grad_rec(housing_norm, iterations)
+  
+# Step 3, calculate MSE
+    y_hat &lt;- LR_predict(X, w)
+    housing_MSE(X)
+}</code></pre>
+<pre class="r"><code>train_1.3_run &lt;- main1_3(as.data.frame(train_1.3a), 1000)
+train_1.3_run</code></pre>
+<pre><code>## [1] 22.08127</code></pre>
+<pre class="r"><code>test_1.3a_run &lt;- main1_3(as.data.frame(test_1.3a), 1000)
+test_1.3a_run</code></pre>
+<pre><code>## [1] 11.5204</code></pre>
+<p>These are the same errors I received with just using straight-out-of-the-box lm() in R. This appears to be a push!</p>
 </div>
 <div id="c.-run-the-gradient-descent-on-un-normalized-dataset.-what-happened" class="section level2">
 <h2>c. Run the gradient descent on un-normalized dataset. What happened?</h2>
-<pre class="r"><code># Try again without normalization.</code></pre>
+<p>This is what I did before where I could not get weight values for 2 of the parameters because the numbers were out of bounds in calculating before the alpha was small enough to actually affect it. Looking at the full dataset, the values were highly wide-ranging as well, and since I was randomly sampling from the training set, I had a high probability of starting with larger values, which would grow exponentially larger with each iteration. Normalizing helped to curtail this issue.</p>
 </div>
 <div id="d.-modify-main1_3-from-part-b-such-that-it-lets-you-to-progressively-observe-changes-in-the-mean-train-and-test-errors.-for-matlab-users-use-functions-init_progress_graph.m-and-add_to_progress_grap.m-provided.-the-init_progress_graph.m-initializes-the-graph-structure-and-add_to_progress_graph.m-lets-you-add-new-data-entries-on-fly-to-the-graph.-if-you-use-other-languages-write-your-own-init_progress_graph-and-add_to_progress_graph.-using-the-two-functions-plot-the-mean-squared-errors-for-thetraining-and-test-set-for-every-50-iteration-steps.-submit-the-program-and-include-the-graph-in-the-report." class="section level2">
 <h2>d. Modify main1_3 from part b, such that it lets you to progressively observe changes in the mean train and test errors. For Matlab users, use functions init_progress_graph.m and add_to_progress_grap.m provided. The init_progress_graph.m initializes the graph structure and add_to_progress_graph.m lets you add new data entries on-fly to the graph. If you use other languages, write your own init_progress_graph and add_to_progress_graph. Using the two functions plot the mean squared errors for thetraining and test set for every 50 iteration steps. Submit the program and include the graph in the report.</h2>
+<pre class="r"><code>main1_3d &lt;- function(X, iterations) {
+
+# Step 1, normalize data
+   housing_norm &lt;- scale(X)
+# Step 2, online gradient descent procedure implemented above
+# But NOW need to progressively monitor across the iterations and plot every 50 steps.
+# 1000 / 50 = 20, so, if I'm doing 1000 iterations, I'll want a progress check at 20. I will
+# assume all iteration inputs will be evently divisible by 50. Can revisit how to handle this
+# in R later if not the case.
+   
+   func_iterations = iterations / 50
+   housing_MSE_graph &lt;- data.frame()
+   w_prog &lt;- matrix(0, ncol = ncol(housing_train), nrow = 1 )
+   
+   for (i in 1:func_iterations) {
+     
+      w &lt;- grad_rec(as.data.frame(housing_norm), 50)
+      counter &lt;- 0
+   
+  # Step 3, calculate MSE
+      counter &lt;- counter + 1
+    y_hat &lt;- LR_predict(housing_norm, w)
+    housing_MSE_graph[i,1] &lt;- housing_MSE(housing_norm)
+    housing_MSE_graph[i,2] &lt;- counter 
+   }
+   return(housing_MSE_graph)
+}</code></pre>
+<p>This is giving me a constant value of 22.08, which means something is deeply amiss.</p>
+<pre class="r"><code>#plot(housing_MSE_graph, y )</code></pre>
 </div>
 <div id="e.-experiment-with-the-gradient-descent-procedure.-try-to-use-fixed-learning-rate-say-0.05-0.01-or-different-number-of-update-steps-say-500-and-3000.-you-many-want-to-change-the-learning-rate-schedule-as-well.-try-for-example-2-n-.-report-your-results-and-any-interesting-behaviors-you-observe." class="section level2">
 <h2>e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.</h2>
 </div>
-</div>
-<div id="late-3" class="section level1">
-<h1>LATE</h1>
 </div>
 <div id="problem-1.4-regression-with-polynomials" class="section level1">
 <h1>Problem 1.4 Regression with Polynomials</h1>
@@ -585,7 +628,7 @@ train_MSE &lt;- housing_MSE(housing_train)</code></pre>
 </div>
 <div id="problem-2.1-data-analysis" class="section level1">
 <h1>Problem 2.1 Data Analysis</h1>
-<p><a href="mailto:harmoney@epona">harmoney@epona</a>:~/Class/OHSU/machinelearning/hw/hw2$ wc -l class* 100 classification_test.txt 250 classification_train.txt 350 total</p>
+<p><a href="mailto:harmony@epona">harmony@epona</a>:~/Class/OHSU/machinelearning/hw/hw2$ wc -l class* 100 classification_test.txt 250 classification_train.txt 350 total</p>
 <pre class="r"><code>class_test &lt;- read.delim('classification_test.txt', sep = '', header = FALSE)
 class_test$V3 &lt;- as.factor(class_test$V3)
 class_train &lt;- read.delim('classification_train.txt', sep= '', header = FALSE)
@@ -596,11 +639,11 @@ class_train$V3 &lt;- as.factor(class_train$V3)</code></pre>
 ##  n obs: 100 
 ##  n variables: 3 
 ## 
-## ── Variable type:factor ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:factor ────────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n n_unique          top_counts ordered
 ##        V3       0      100 100        2 1: 62, 0: 38, NA: 0   FALSE
 ## 
-## ── Variable type:numeric ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:numeric ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n  mean   sd    p0   p25   p50  p75 p100
 ##        V1       0      100 100 -0.29 0.82 -1.83 -0.89 -0.33 0.25 2.08
 ##        V2       0      100 100  0.66 0.64 -0.58  0.17  0.68 1.25 2.11
@@ -612,11 +655,11 @@ class_train$V3 &lt;- as.factor(class_train$V3)</code></pre>
 ##  n obs: 250 
 ##  n variables: 3 
 ## 
-## ── Variable type:factor ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:factor ────────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n n_unique           top_counts ordered
 ##        V3       0      250 250        2 1: 155, 0: 95, NA: 0   FALSE
 ## 
-## ── Variable type:numeric ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Variable type:numeric ───────────────────────────────────────────────────────────────────────────────────
 ##  variable missing complete   n  mean   sd    p0    p25   p50  p75 p100
 ##        V1       0      250 250 -0.36 0.71 -2.16 -0.9   -0.41 0.2  1.18
 ##        V2       0      250 250  0.57 0.69 -1.08  0.059  0.54 1.08 2.29
@@ -634,7 +677,7 @@ class_train$V3 &lt;- as.factor(class_train$V3)</code></pre>
 <p>No, there is no linear boundary that could completely separate the two classes without classification errors for both classes. There is too much overlap between red and blue (0 and x) between ~ -1.8 and 0.0 on the x-axis and -1.0 and 1.0 on the y-axis, with the biggest concern between x(-1,-5) and y(0,0.5).</p>
 </div>
 </div>
-<div id="late-4" class="section level1">
+<div id="late" class="section level1">
 <h1>LATE</h1>
 </div>
 <div id="problem-2.2-logistic-regression" class="section level1">
