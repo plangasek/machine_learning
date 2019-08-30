@@ -596,8 +596,8 @@ test_1.3a_run</code></pre>
    }
    return(housing_MSE_graph)
 }</code></pre>
-<p>This is giving me a constant value of 22.08, which means something is deeply amiss.</p>
-<pre class="r"><code>#plot(housing_MSE_graph, y )</code></pre>
+<p>This is giving me a constant value of 22.08, which means something is deeply amiss, and it won’t plot.</p>
+<pre class="r"><code>#plot(housing_MSE_graph)</code></pre>
 </div>
 <div id="e.-experiment-with-the-gradient-descent-procedure.-try-to-use-fixed-learning-rate-say-0.05-0.01-or-different-number-of-update-steps-say-500-and-3000.-you-many-want-to-change-the-learning-rate-schedule-as-well.-try-for-example-2-n-.-report-your-results-and-any-interesting-behaviors-you-observe." class="section level2">
 <h2>e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.</h2>
@@ -608,16 +608,36 @@ test_1.3a_run</code></pre>
 <p><span class="math display">\[f(x,w) = w_0 + \sum_{i=1}^{13}w_ix_i + \sum_{i=1}^{13} \sum_{j=1}^{13}w_{ij}x_{i}x_{j}\]</span></p>
 <div id="a.-write-a-function-extendx-that-takes-an-input-x-and-returns-an-expanded-x-that-includes-all-linear-and-degree-two-polynomials." class="section level2">
 <h2>a. Write a function extendx that takes an input x and returns an expanded x that includes all linear and degree two polynomials.</h2>
-<pre class="r"><code>extendx &lt;- function(x) {
+<p>So, the plan is to imput the current matrix of parameters and output a new extended matrix with the original parameters (linear) and a combination of each parameter with another (degree two).</p>
+<pre class="r"><code># This assumes that the matrix going into the function does NOT contain the outcome column.
+
+extendx &lt;- function(X) {
+
+  X_ext &lt;- X
   
+  for (i in 1:(ncol(X) -1)){ # for each parameter, but only to the second to last.
+    for (j in (i+1):(ncol(X))) { # for each possible combination
+      x_col &lt;- X[,i] * X[,j]
+      X_ext &lt;- cbind(X_ext, x_col)
+      colnames(X_ext)[ncol(X_ext)] = noquote(paste0(colnames(X[i]), colnames(X[j])))
+  }
+  }
+  return(X_ext)
 }</code></pre>
+<p>After MUCH testing, this works! W00T!</p>
 </div>
 <div id="b.-what-happened-to-the-binary-attribute-after-the-transformation" class="section level2">
 <h2>b. What happened to the binary attribute after the transformation?</h2>
+<p>Well, since I coded this to multiple one variable by another, they’re all zero, since 0 times any number is 0. So, colinearity with CHAS cannot be evaluated this way.</p>
 </div>
 <div id="c.-write-and-submit-a-program-main1_4-that-computes-the-regression-coefficients-for-the-extended-input-and-both-train-and-test-errors-for-the-result." class="section level2">
 <h2>c. Write and submit a program main1_4 that computes the regression coefficients for the extended input and both train and test errors for the result.</h2>
-<pre class="r"><code># This will need to be saved as a separate script once completed and handed in separately.</code></pre>
+<p>Step 1: Extend X. Step 2: Calculate</p>
+<pre class="r"><code>main1_4 &lt;- function(X){
+  X_ext &lt;- extend(X)
+  
+  
+}</code></pre>
 </div>
 <div id="d.-report-both-errors-in-your-report-and-compare-them-with-the-results-in-part-2.-what-do-you-see-which-method-would-you-use-for-the-prediction-why-please-do-not-turn-in-the-weights-for-this-part-in-your-report." class="section level2">
 <h2>d. Report both errors in your report and compare them with the results in part 2. What do you see? Which method would you use for the prediction? Why? Please do not turn in the weights for this part in your report.</h2>
@@ -676,9 +696,6 @@ class_train$V3 &lt;- as.factor(class_train$V3)</code></pre>
 <h2>b. Include the plot in your report. Is it possible to separate the two classes perfectly with a linear decision boundary?</h2>
 <p>No, there is no linear boundary that could completely separate the two classes without classification errors for both classes. There is too much overlap between red and blue (0 and x) between ~ -1.8 and 0.0 on the x-axis and -1.0 and 1.0 on the y-axis, with the biggest concern between x(-1,-5) and y(0,0.5).</p>
 </div>
-</div>
-<div id="late" class="section level1">
-<h1>LATE</h1>
 </div>
 <div id="problem-2.2-logistic-regression" class="section level1">
 <h1>Problem 2.2 Logistic Regression</h1>

@@ -303,10 +303,10 @@ main1_3d <- function(X, iterations) {
 }
 ```
 
-This is giving me a constant value of 22.08, which means something is deeply amiss.
+This is giving me a constant value of 22.08, which means something is deeply amiss, and it won't plot.
 
 ```{r}
-#plot(housing_MSE_graph, y )
+#plot(housing_MSE_graph)
 ```
 
 
@@ -323,21 +323,45 @@ $$f(x,w) = w_0 + \sum_{i=1}^{13}w_ix_i + \sum_{i=1}^{13} \sum_{j=1}^{13}w_{ij}x_
 
 ## a. Write a function extendx that takes an input x and returns an expanded x that includes all linear and degree two polynomials.
 
-```{r extendx}
+So, the plan is to imput the current matrix of parameters and output a new extended matrix with the original parameters (linear) and a combination of each parameter with another (degree two).
 
-extendx <- function(x) {
+```{r extendx}
+# This assumes that the matrix going into the function does NOT contain the outcome column.
+
+extendx <- function(X) {
+
+  X_ext <- X
   
+  for (i in 1:(ncol(X) -1)){ # for each parameter, but only to the second to last.
+    for (j in (i+1):(ncol(X))) { # for each possible combination
+      x_col <- X[,i] * X[,j]
+      X_ext <- cbind(X_ext, x_col)
+      colnames(X_ext)[ncol(X_ext)] = noquote(paste0(colnames(X[i]), colnames(X[j])))
+  }
+  }
+  return(X_ext)
 }
 
 ```
 
+After MUCH testing, this works! W00T!
 
 ## b. What happened to the binary attribute after the transformation?
 
+Well, since I coded this to multiple one variable by another, they're all zero, since 0 times any number is 0. So, colinearity with CHAS cannot be evaluated this way.
+
 ## c. Write and submit a program main1_4 that computes the regression coefficients for the extended input and both train and test errors for the result.
 
+Step 1: Extend X.
+Step 2: Calculate 
+
 ```{r main1_4}
-# This will need to be saved as a separate script once completed and handed in separately.
+
+main1_4 <- function(X){
+  X_ext <- extend(X)
+  
+  
+}
 
 
 ```
@@ -381,7 +405,7 @@ plot(x = class_train$V1, y = class_train$V2, col = c("red", "blue")[class_train$
 
 No, there is no linear boundary that could completely separate the two classes without classification errors for both classes. There is too much overlap between red and blue (0 and x) between ~ -1.8 and 0.0 on the x-axis and -1.0 and 1.0 on the y-axis, with the biggest concern between x(-1,-5) and y(0,0.5).
 
-# LATE
+
 # Problem 2.2 Logistic Regression
 
 ## a. During the class you were given the expression for the gradient of the logistic regression model. Use the loglikelihood setup from the lecture to derive the expression. Show clearly the steps of the derivation. Please remember that the ’default’ gradient takes into account all data points in the training set.
