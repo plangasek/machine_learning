@@ -524,20 +524,20 @@ test_ogd &lt;- cbind(1, test_1.3a) # probably helpful to do for testing set as w
 grad_rec &lt;- function(X, iterations) {
   set.seed(1235)
   X &lt;- cbind(1, X)
-  w = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
+  w_test = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
   current_iter &lt;- 1 # Where we at, dawg
-  alpha &lt;- 2  
+  alpha &lt;- .05  
   N &lt;- ncol(housing_train)
 
   for (i in 1:iterations) {
     current_row &lt;- X[sample(nrow(X), 1),]
-    gradient_vals &lt;- (1 / N) * (current_row[15] - t(w) * current_row[1:14]) * current_row[1:14]
-    w &lt;- w + alpha * t(gradient_vals) # update weights from this sample.
+    gradient_vals &lt;- (1 / N) * (current_row[15] - t(w_test) * current_row[1:14]) * current_row[1:14]
+    w_test &lt;- w_test + alpha * t(gradient_vals) # update weights from this sample.
     current_iter &lt;- current_iter + 1
     alpha &lt;- 2 / current_iter # anneal learning rate per problem
      } 
   
-  return(w)
+  return(w_test)
 }</code></pre>
 <p>When running this, I get 2 values that are far too large to begin with in several samples of the data, making the calculation unwieldly as it goes towards the 1000 iteration. I am assuming this is a normalization issue and can be addressed in the next part of the assignment.</p>
 </div>
@@ -602,6 +602,7 @@ test_1.3a_run</code></pre>
 </div>
 <div id="e.-experiment-with-the-gradient-descent-procedure.-try-to-use-fixed-learning-rate-say-0.05-0.01-or-different-number-of-update-steps-say-500-and-3000.-you-many-want-to-change-the-learning-rate-schedule-as-well.-try-for-example-2-n-.-report-your-results-and-any-interesting-behaviors-you-observe." class="section level2">
 <h2>e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.</h2>
+<p>Adjusting my code doesn’t seem to allow me to do a simple fixed learning rate. I’ll need to revisit this to see where everything is going awry.</p>
 </div>
 </div>
 <div id="problem-1.4-regression-with-polynomials" class="section level1">
@@ -725,6 +726,9 @@ l(D,w) = \sum_{i=1}^{n}~y_i~log~\mu_i+(1-y_i)~log(1-\mu_i)
 \displaystyle \frac{\partial}{\partial w_j}l(D,w) = \sum_{i=1}^{n}\frac{\partial}{\partial z_i}[y_i~log~\mu_i+(1-y_i)~log(1-\mu_i)]\frac {\partial z_i}{\partial w_j} 
 \\
 where:~~~~ \frac{\partial z_i}{\partial w_j} = x_{i,j}
+\]</span></p>
+<p><span class="math display">\[
+\frac{\partial (z_i)}{\partial z_i} = g(z_i)(1 - g(z_i))
 \]</span></p>
 </div>
 <div id="b.-write-and-submit-a-gradient-procedure-glr-for-updating-the-parameters-of-the-logistic-regression-model." class="section level2">

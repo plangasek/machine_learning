@@ -221,20 +221,20 @@ test_ogd <- cbind(1, test_1.3a) # probably helpful to do for testing set as well
 grad_rec <- function(X, iterations) {
   set.seed(1235)
   X <- cbind(1, X)
-  w = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
+  w_test = matrix(0, ncol = ncol(housing_train), nrow = 1 ) #14 columns: 1 intercept and 13 parameter weights
   current_iter <- 1 # Where we at, dawg
-  alpha <- 2  
+  alpha <- .05  
   N <- ncol(housing_train)
 
   for (i in 1:iterations) {
     current_row <- X[sample(nrow(X), 1),]
-    gradient_vals <- (1 / N) * (current_row[15] - t(w) * current_row[1:14]) * current_row[1:14]
-    w <- w + alpha * t(gradient_vals) # update weights from this sample.
+    gradient_vals <- (1 / N) * (current_row[15] - t(w_test) * current_row[1:14]) * current_row[1:14]
+    w_test <- w_test + alpha * t(gradient_vals) # update weights from this sample.
     current_iter <- current_iter + 1
     alpha <- 2 / current_iter # anneal learning rate per problem
      } 
   
-  return(w)
+  return(w_test)
 }
 ```
 
@@ -313,10 +313,7 @@ This is giving me a constant value of 22.08, which means something is deeply ami
 
 ## e. Experiment with the gradient descent procedure. Try to use: fixed learning rate (say 0.05, 0.01), or different number of update steps (say 500 and 3000). You many want to change the learning rate schedule as well. Try for example 2 / n . Report your results and any interesting behaviors you observe.
 
-```{r}
-
-```
-
+Adjusting my code doesn't seem to allow me to do a simple fixed learning rate. I'll need to revisit this to see where everything is going awry.
 
 # Problem 1.4 Regression with Polynomials
 
@@ -439,6 +436,10 @@ $$
 \displaystyle \frac{\partial}{\partial w_j}l(D,w) = \sum_{i=1}^{n}\frac{\partial}{\partial z_i}[y_i~log~\mu_i+(1-y_i)~log(1-\mu_i)]\frac {\partial z_i}{\partial w_j} 
 \\
 where:~~~~ \frac{\partial z_i}{\partial w_j} = x_{i,j}
+$$
+
+$$
+\frac{\partial (z_i)}{\partial z_i} = g(z_i)(1 - g(z_i))
 $$
 
 ## b. Write and submit a gradient procedure GLR for updating the parameters of the logistic regression model. 
