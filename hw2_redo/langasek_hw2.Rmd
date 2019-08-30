@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r libraries}
 # Class instructions are to not use packages, as such, this will only be for necessities
 library(skimr) # I like this for EDAs.
+library(ggplot2) # graphs are much better with this one
 ```
 
 harmoney@epona:~/Class/OHSU/machinelearning/hw/hw2$ wc -l housing.txt 
@@ -392,6 +393,20 @@ skim(class_test)
 skim(class_train)
 ```
 
+```{r}
+ggplot(class_test, aes(x = class_test$V3)) + 
+  geom_bar() + 
+  xlab("Class") + 
+  ggtitle("Class Test")
+
+ggplot(class_train, aes(x = class_train$V3)) + 
+  geom_bar() + 
+  xlab("Class") + 
+  ggtitle("Class Train")
+```
+
+
+2 unique values for the 3rd column and set up as a factor. The other 2 are numeric with values from -0.36 - 1.18 on one and .57 - 2.29 on the other. No missing values, all data accounted for. Histograms look relatively normal. Count distributions between the 2 datasets look similar.
 
 ## a. Write a program that plots the input data points in classification_train.txt such that the plot distinguishes between data points with different class labels (use different color and symbol for a point, e.g. ’x’ or ’o’ ).
 
