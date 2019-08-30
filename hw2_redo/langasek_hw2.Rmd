@@ -426,16 +426,20 @@ No, there is no linear boundary that could completely separate the two classes w
 ## a. During the class you were given the expression for the gradient of the logistic regression model. Use the loglikelihood setup from the lecture to derive the expression. Show clearly the steps of the derivation. Please remember that the ’default’ gradient takes into account all data points in the training set.
 
 $$
-
-$$
-
-$$
 \begin{aligned}
  \underbrace{p(x|\mu_1,\Sigma_1)} > \underbrace{p(x|\mu_0,\Sigma_0)} \longrightarrow then~y = 1 \\
  g_1(x) ~~~~~>~~~~~~ g_0(x)~~~~~~~~~~~~~~ else~y = 0
 \end{aligned}
 $$
 
+$$
+l(D,w) = \sum_{i=1}^{n}~y_i~log~\mu_i+(1-y_i)~log(1-\mu_i) 
+$$
+$$
+\displaystyle \frac{\partial}{\partial w_j}l(D,w) = \sum_{i=1}^{n}\frac{\partial}{\partial z_i}[y_i~log~\mu_i+(1-y_i)~log(1-\mu_i)]\frac {\partial z_i}{\partial w_j} 
+\\
+where:~~~~ \frac{\partial z_i}{\partial w_j} = x_{i,j}
+$$
 
 ## b. Write and submit a gradient procedure GLR for updating the parameters of the logistic regression model. 
 Your gradient procedure should:
@@ -443,7 +447,40 @@ Your gradient procedure should:
 – use the annealed learning rate 2 / k ;
 – executes for K steps where K is the parameter of the procedures.
 
+```{r}
+
+GLR <- function(X, K) {
+
+  w = matrix(1, ncol = ncol(class_train), nrow = 1 ) # weight initialization
+  k = 1 # number of steps
+  alpha = 2/k # annealed learning rate
+  
+  for (i in 1:K){
+    X[i,]
+    
+    k = k + 1
+    alpha = 2/k
+  }
+  
+  return(w)
+
+}
+```
+
+
 ## c. Write and submit a program main2_1 that runs the GLR function for 500 steps and after the training computes mean misclassification errors for both the training and test set. In your report include, the resulting weights, and misclassification errors.
+
+```{r main2_1}
+
+main2_1 <- function(X_train, X_test){
+  training <- GLR(X_train, 500)
+  
+  test <- GLR(X_test, 500)
+}
+
+
+```
+
 
 ## d. Update the main2_1 with plot functions that let you observe the progress of the errors after every 50 update steps. Use functions defined earlier for this purpose. Include the resulting graph in your report.
 
@@ -452,6 +489,10 @@ Your gradient procedure should:
 # Problem 2.3 Generative Classification Model
 
 ## a. Give the formula for computing ML estimates of means of class conditional densities?
+
+$$
+\hat{\mu} = \frac{1}{n}\sum_{i=1}^nx_i
+$$
 
 ## b. How would you go about computing the estimate of the covariance matrix $\sum$ ? Note that the estimate of $\sum$ must combine both class 0 and class 1 examples.
 
