@@ -460,9 +460,9 @@ Your gradient procedure should:
 ```{r}
 
 GLR <- function(X, K) {
-  N <- ncol()
+  N <- ncol(X)
   X <- cbind(1, X) # Need y-intercept weight.
-  w = matrix(1, ncol = ncol(class_train), nrow = 1 ) # weight initialization
+  w = matrix(1, ncol = ncol(X), nrow = 1 ) # weight initialization
   k = 1 # number of steps
   alpha = 2/k # annealed learning rate
   
