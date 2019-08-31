@@ -460,14 +460,17 @@ Your gradient procedure should:
 ```{r}
 
 GLR <- function(X, K) {
-
+  N <- ncol()
+  X <- cbind(1, X) # Need y-intercept weight.
   w = matrix(1, ncol = ncol(class_train), nrow = 1 ) # weight initialization
   k = 1 # number of steps
   alpha = 2/k # annealed learning rate
   
+  
   for (i in 1:K){
-    X[i,]
-    
+    current_row <- X[sample(nrow(X), 1),]
+    gradient_vals <- (1/N) * (current_row[4] - t(w) * current_row[1:3]) * current_row[1:3]
+    w <- w + alpha * t(gradient_vals)
     k = k + 1
     alpha = 2/k
   }
@@ -501,7 +504,7 @@ main2_1 <- function(X_train, X_test){
 ## a. Give the formula for computing ML estimates of means of class conditional densities?
 
 $$
-\hat{\mu} = \frac{1}{n}\sum_{i=1}^nx_i
+\hat{\mu} = \frac{1}{n}\sum_{i=1}^nx_i 
 $$
 
 ## b. How would you go about computing the estimate of the covariance matrix $\sum$ ? Note that the estimate of $\sum$ must combine both class 0 and class 1 examples.

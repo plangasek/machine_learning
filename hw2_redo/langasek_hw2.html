@@ -742,14 +742,17 @@ where:~~~~ \frac{\partial z_i}{\partial w_j} = x_{i,j}
 <h2>b. Write and submit a gradient procedure GLR for updating the parameters of the logistic regression model.</h2>
 <p>Your gradient procedure should: – start from unit weights (all weights set to 1 at the beginning); – use the annealed learning rate 2 / k ; – executes for K steps where K is the parameter of the procedures.</p>
 <pre class="r"><code>GLR &lt;- function(X, K) {
-
+  N &lt;- ncol()
+  X &lt;- cbind(1, X) # Need y-intercept weight.
   w = matrix(1, ncol = ncol(class_train), nrow = 1 ) # weight initialization
   k = 1 # number of steps
   alpha = 2/k # annealed learning rate
   
+  
   for (i in 1:K){
-    X[i,]
-    
+    current_row &lt;- X[sample(nrow(X), 1),]
+    gradient_vals &lt;- (1/N) * (current_row[4] - t(w) * current_row[1:3]) * current_row[1:3]
+    w &lt;- w + alpha * t(gradient_vals)
     k = k + 1
     alpha = 2/k
   }
@@ -778,7 +781,7 @@ where:~~~~ \frac{\partial z_i}{\partial w_j} = x_{i,j}
 <div id="a.-give-the-formula-for-computing-ml-estimates-of-means-of-class-conditional-densities" class="section level2">
 <h2>a. Give the formula for computing ML estimates of means of class conditional densities?</h2>
 <p><span class="math display">\[
-\hat{\mu} = \frac{1}{n}\sum_{i=1}^nx_i
+\hat{\mu} = \frac{1}{n}\sum_{i=1}^nx_i 
 \]</span></p>
 </div>
 <div id="b.-how-would-you-go-about-computing-the-estimate-of-the-covariance-matrix-sum-note-that-the-estimate-of-sum-must-combine-both-class-0-and-class-1-examples." class="section level2">
