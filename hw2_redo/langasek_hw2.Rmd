@@ -441,6 +441,15 @@ $$
 $$
 \frac{\partial (z_i)}{\partial z_i} = g(z_i)(1 - g(z_i))
 $$
+$$
+\frac{\partial}{\partial z_i}[y_i~log\mu_i+(1-y_i)log(1-\mu_i)]=y_i\frac{1}{g(z_i)}+(1-y_i)\frac{-1}{1-g(z_i)}\frac{\partial g(z_i)}{\partial z_i} \\
+= y_i(1-g(z_i)) + (1-y_i)(-g(z_i)) \\
+= y_i - g(z_i)
+$$
+$$
+\nabla_w l(D,w) = \sum_{i=1}^n - x_i(y_i-g(w^Tx_i)) \\ 
+= \sum_{i=1}^n -x_i(y_i-f(w,x_i))
+$$
 
 ## b. Write and submit a gradient procedure GLR for updating the parameters of the logistic regression model. 
 Your gradient procedure should:
